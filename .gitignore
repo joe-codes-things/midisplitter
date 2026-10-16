@@ -1,0 +1,46 @@
+# Build directories
+build/
+cmake-build-*/
+Build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.dSYM
+
+# Plugin binaries
+*.vst3
+*.component
+
+# Test outputs
+Testing/
+CTestTestfile.cmake
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Google Test
+_deps/
+
+# Exports (pre-built binaries - don't commit to public repo)
+exports/
+
+# Build count tracking
+.build_count
+
+# Internal documentation
+docs/
+
+# Kiro configuration
+.kiro/

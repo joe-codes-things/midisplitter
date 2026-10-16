@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+
+    <title>MIDI Splitter</title>
+    <welcome    file="welcome.html"  mime-type="text/html" />
+    <license    file="license.html"  mime-type="text/html" />
+
+    <!-- Require macOS 11.0 or later -->
+    <os-version min="11.0" />
+
+    <!-- Component packages (built by build_installer.sh) -->
+    <pkg-ref id="com.ninelivesaudio.midisplitter.vst3"  version="0" auth="root">MIDISplitter_VST3.pkg</pkg-ref>
+    <pkg-ref id="com.ninelivesaudio.midisplitter.au"    version="0" auth="root">MIDISplitter_AU.pkg</pkg-ref>
+    <pkg-ref id="com.ninelivesaudio.midisplitter.guide" version="0" auth="root">MIDISplitter_Guide.pkg</pkg-ref>
+
+    <choices-outline>
+        <line choice="com.ninelivesaudio.midisplitter.vst3"  />
+        <line choice="com.ninelivesaudio.midisplitter.au"    />
+        <line choice="com.ninelivesaudio.midisplitter.guide" />
+    </choices-outline>
+
+    <choice id="com.ninelivesaudio.midisplitter.vst3"
+            title="VST3 Plugin"
+            description="Installs the VST3 plugin to /Library/Audio/Plug-Ins/VST3/. Use with Cubase and other VST3-compatible DAWs."
+            selected="true"
+            enabled="true">
+        <pkg-ref id="com.ninelivesaudio.midisplitter.vst3" />
+    </choice>
+
+    <choice id="com.ninelivesaudio.midisplitter.au"
+            title="Audio Unit (AU) Plugin"
+            description="Installs the AU plugin to /Library/Audio/Plug-Ins/Components/. Use with Logic Pro."
+            selected="true"
+            enabled="true">
+        <pkg-ref id="com.ninelivesaudio.midisplitter.au" />
+    </choice>
+
+    <choice id="com.ninelivesaudio.midisplitter.guide"
+            title="PDF User Guide"
+            description="Installs the MIDI Splitter user guide to ~/Documents/Nine Lives Audio/."
+            selected="true"
+            enabled="true">
+        <pkg-ref id="com.ninelivesaudio.midisplitter.guide" />
+    </choice>
+
+</installer-gui-script>

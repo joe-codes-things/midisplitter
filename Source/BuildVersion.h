@@ -1,0 +1,14 @@
+#pragma once
+
+// Auto-generated version header - DO NOT EDIT
+// Generated: Fri Oct 16 15:06:48 PDT 2026
+
+#define PLUGIN_BASE_VERSION "0.0.15"
+#define PLUGIN_BUILD_NUMBER 73
+#define PLUGIN_FULL_VERSION "0.0.15"
+#define PLUGIN_BUILD_DATE "20261016"
+#define PLUGIN_BUILD_TIME "150648"
+#define PLUGIN_BUILD_TIMESTAMP "20261016_150648"
+
+// For display in UI
+#define PLUGIN_DISPLAY_VERSION "MIDI Splitter v" PLUGIN_FULL_VERSION
