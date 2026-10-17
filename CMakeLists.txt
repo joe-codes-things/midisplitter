@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MIDISplitterPlugin VERSION 0.0.16)
+project(MIDISplitterPlugin VERSION 0.0.17)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
