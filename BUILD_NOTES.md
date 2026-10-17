@@ -1,5 +1,7 @@
 # Build Notes for MIDI Splitter Plugin
 
+> **⚠️ FOR AI/AUTOMATION:** Always use `./Scripts/build_quiet.sh` instead of `./Scripts/build.sh` to avoid output timeout issues. See Build Commands section below.
+
 ## ⚠️ CRITICAL CONFIGURATION RULES
 
 ### Audio Unit (AU) Plugin Type
@@ -46,8 +48,9 @@ VST3 uses different categorization and is configured correctly as:
 
 ## Build Commands
 
+### For Manual/Interactive Use:
 ```bash
-# Full clean build
+# Full clean build with detailed output
 ./Scripts/build.sh
 
 # Build installer package
@@ -56,6 +59,18 @@ VST3 uses different categorization and is configured correctly as:
 # Build DMG with uninstaller
 ./Scripts/build_dmg.sh
 ```
+
+### For Automation/AI Tool Use:
+```bash
+# Use this for AI/automated builds to avoid output timeout issues
+./Scripts/build_quiet.sh
+
+# Then proceed with installers as normal
+./Scripts/build_installer.sh
+./Scripts/build_dmg.sh
+```
+
+**Why `build_quiet.sh`?** The regular `build.sh` produces ~280,000 characters of output which can cause timeouts in automated tools. The quiet version suppresses output and just verifies success.
 
 ## Version Updates
 
