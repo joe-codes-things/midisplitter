@@ -39,8 +39,10 @@ exports/
 # Build count tracking
 .build_count
 
-# Internal documentation
+# Internal documentation (exclude most, allow specific files)
 docs/
+!docs/BUGS.md
+!docs/FEATURE-IDEAS.md
 
 # Kiro configuration
 .kiro/
