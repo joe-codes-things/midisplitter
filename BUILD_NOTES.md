@@ -72,6 +72,22 @@ VST3 uses different categorization and is configured correctly as:
 
 **Why `build_quiet.sh`?** The regular `build.sh` produces ~280,000 characters of output which can cause timeouts in automated tools. The quiet version suppresses output and just verifies success.
 
+## Build System Safeguards (Added v0.0.17 - Oct 2026)
+
+**Issue:** Debug builds were accidentally packaged, causing 3x file size bloat (9MB vs 3MB).
+
+**Fix:** Added three-layer validation system:
+1. `CMakeLists.txt` - Defaults to Release build if unspecified
+2. `build_installer.sh` - Rejects binaries >6MB before packaging
+3. `build_dmg.sh` - Rejects packages >6MB before DMG creation
+
+**Expected sizes:** Binary=3-4MB, PKG=2-3MB, DMG=3-4MB  
+**If sizes exceed 6MB:** Debug build detected, rebuild with `./Scripts/build.sh`
+
+See commit `7f24399` for implementation details.
+
+---
+
 ## Version Updates
 
 Version is controlled in `CMakeLists.txt`:
