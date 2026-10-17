@@ -7,6 +7,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Force Release build if not specified (prevents debug bloat)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+    message(STATUS "No build type specified, defaulting to Release")
+endif()
+
+# Verify we're building in Release mode
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(WARNING "Building in ${CMAKE_BUILD_TYPE} mode - binary size will be larger than Release")
+endif()
+
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+
 # Detect current git branch for beta/experimental naming
 execute_process(
     COMMAND git branch --show-current

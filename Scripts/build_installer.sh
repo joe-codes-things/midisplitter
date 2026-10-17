@@ -42,8 +42,20 @@ echo ""
 if [ ! -d "$VST3_SRC" ]; then
     echo -e "${RED}Error: VST3 plugin not found at:${NC}"
     echo "  $VST3_SRC"
-    echo "Run ./build.sh first."
+    echo "Run ./Scripts/build.sh first."
     exit 1
+fi
+
+# Check binary size as sanity check (should be ~3-4M, not 7-8M)
+VST3_BINARY="$VST3_SRC/Contents/MacOS/MIDI Splitter"
+if [ -f "$VST3_BINARY" ]; then
+    VST3_SIZE=$(stat -f%z "$VST3_BINARY" 2>/dev/null || stat -c%s "$VST3_BINARY" 2>/dev/null)
+    if [ "$VST3_SIZE" -gt 6000000 ]; then
+        echo -e "${YELLOW}Warning: VST3 binary is unusually large ($(numfmt --to=iec $VST3_SIZE || echo ${VST3_SIZE} bytes))${NC}"
+        echo "This suggests a Debug build. Expected size: ~3-4MB"
+        echo "Please rebuild with: ./Scripts/build.sh (ensures Release mode)"
+        exit 1
+    fi
 fi
 
 if [ ! -d "$AU_SRC" ]; then
