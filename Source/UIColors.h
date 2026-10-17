@@ -48,6 +48,7 @@ namespace UIColors {
     const juce::Colour Amber(0xFF, 0xB8, 0x4D);            // #FFB84D - Hover/focus glow
     const juce::Colour Gold(0xFF, 0xC2, 0x3C);             // #FFC23C - Premium highlights
     const juce::Colour DeepAmber(0xFF, 0x7A, 0x00);        // #FF7A00 - Strong emphasis
+    const juce::Colour LogicYellow(0xFF, 0xD6, 0x00);      // #FFD600 - Logic Pro default automation yellow
     
     // ========================================================================
     // Typography - Text color hierarchy

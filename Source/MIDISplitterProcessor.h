@@ -247,7 +247,9 @@ inline MIDISplitterProcessor::MIDISplitterProcessor()
     , isPrepared_(false)
     , currentLatencySamples_(0) {
     
-    // Add automatable parameters
+    // Add automatable parameters in order: Bypass, Voice Count, Mod, Exp, Vol
+    
+    // 1. Bypass (Magenta-ish color in Logic)
     addParameter(bypassParam_ = new juce::AudioParameterBool(
         "bypass",                           // parameter ID
         "Bypass",                           // parameter name
@@ -257,39 +259,43 @@ inline MIDISplitterProcessor::MIDISplitterProcessor()
         [](const juce::String& text) { return text == "Enabled"; }       // text to value
     ));
     
-    addParameter(modFilterParam_ = new juce::AudioParameterBool(
-        "modFilter",                        // parameter ID
-        "Mod Filter",                       // parameter name
-        true,                               // default value (enabled)
-        juce::String(),                     // parameter label
-        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
-        [](const juce::String& text) { return text == "Enabled"; }
-    ));
-    
-    addParameter(expFilterParam_ = new juce::AudioParameterBool(
-        "expFilter",                        // parameter ID
-        "Exp Filter",                       // parameter name
-        true,                               // default value (enabled)
-        juce::String(),                     // parameter label
-        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
-        [](const juce::String& text) { return text == "Enabled"; }
-    ));
-    
-    addParameter(volFilterParam_ = new juce::AudioParameterBool(
-        "volFilter",                        // parameter ID
-        "Vol Filter",                       // parameter name
-        true,                               // default value (enabled)
-        juce::String(),                     // parameter label
-        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
-        [](const juce::String& text) { return text == "Enabled"; }
-    ));
-    
+    // 2. Voice Count (Gold color - was Vol's color)
     addParameter(voiceCountParam_ = new juce::AudioParameterInt(
         "voiceCount",                       // parameter ID
         "Voice Count",                      // parameter name
         2,                                  // minimum value
         16,                                 // maximum value
         4                                   // default value
+    ));
+    
+    // 3. Mod (Deep Amber - was Mod's color, stays the same)
+    addParameter(modFilterParam_ = new juce::AudioParameterBool(
+        "modFilter",                        // parameter ID
+        "Mod",                              // parameter name (removed "Filter")
+        true,                               // default value (enabled)
+        juce::String(),                     // parameter label
+        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
+        [](const juce::String& text) { return text == "Enabled"; }
+    ));
+    
+    // 4. Exp (Bright Blue - was Exp's color, swapped with Mod)
+    addParameter(expFilterParam_ = new juce::AudioParameterBool(
+        "expFilter",                        // parameter ID
+        "Exp",                              // parameter name (removed "Filter")
+        true,                               // default value (enabled)
+        juce::String(),                     // parameter label
+        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
+        [](const juce::String& text) { return text == "Enabled"; }
+    ));
+    
+    // 5. Vol (Logic default yellow)
+    addParameter(volFilterParam_ = new juce::AudioParameterBool(
+        "volFilter",                        // parameter ID
+        "Vol",                              // parameter name (removed "Filter")
+        true,                               // default value (enabled)
+        juce::String(),                     // parameter label
+        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
+        [](const juce::String& text) { return text == "Enabled"; }
     ));
     
     // Initialize core components

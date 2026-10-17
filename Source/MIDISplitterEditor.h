@@ -583,15 +583,19 @@ inline void MIDISplitterEditor::initializeComponents()
     addAndMakeVisible(*voicesLabel_);
 
     // ── CC filter checkboxes ──────────────────────────────────────────────
-    modCheckbox_ = std::make_unique<CCFilterCheckbox>(UIColors::DeepAmber);  // #FF7A00
+    // Logic color assignments:
+    // - Mod: DeepAmber (#FF7A00) - stays the same
+    // - Exp: BrightBlue (#2979FF) - stays the same  
+    // - Vol: LogicYellow (#FFD600) - Logic's default automation yellow
+    modCheckbox_ = std::make_unique<CCFilterCheckbox>(UIColors::DeepAmber);
     modCheckbox_->setStateChangeCallback([this](bool e){ handleModFilterChange(e); });
     addAndMakeVisible(*modCheckbox_);
 
-    expCheckbox_ = std::make_unique<CCFilterCheckbox>(UIColors::BrightBlue); // #2979FF
+    expCheckbox_ = std::make_unique<CCFilterCheckbox>(UIColors::BrightBlue);
     expCheckbox_->setStateChangeCallback([this](bool e){ handleExpFilterChange(e); });
     addAndMakeVisible(*expCheckbox_);
 
-    volCheckbox_ = std::make_unique<CCFilterCheckbox>(UIColors::Gold);       // #FFC23C
+    volCheckbox_ = std::make_unique<CCFilterCheckbox>(UIColors::LogicYellow);
     volCheckbox_->setStateChangeCallback([this](bool e){ handleVolFilterChange(e); });
     addAndMakeVisible(*volCheckbox_);
 
@@ -640,42 +644,95 @@ inline void MIDISplitterEditor::initializeComponents()
 }
 
 inline void MIDISplitterEditor::handleVoiceCountChange(int newCount) {
+    // Update automation parameter (this will trigger processBlock to sync)
+    if (auto* param = processor_.getParameters()[1]) { // voiceCountParam is index 1 (after bypass)
+        if (auto* intParam = dynamic_cast<juce::AudioParameterInt*>(param)) {
+            *intParam = newCount;
+        }
+    }
+    
+    // Also update plugin controller for immediate UI feedback
     processor_.getPluginController().setVoiceCount(newCount);
 }
 
 inline void MIDISplitterEditor::handleModFilterChange(bool enabled) {
+    // Update automation parameter
+    if (auto* param = processor_.getParameters()[2]) { // modFilterParam is index 2
+        if (auto* boolParam = dynamic_cast<juce::AudioParameterBool*>(param)) {
+            *boolParam = enabled;
+        }
+    }
+    
+    // Also update plugin controller and pipeline for immediate effect
     processor_.getPluginController().setModEnabled(enabled);
     if (auto* s = processor_.getSenderPipeline()) s->setModEnabled(enabled);
 }
 
 inline void MIDISplitterEditor::handleExpFilterChange(bool enabled) {
+    // Update automation parameter
+    if (auto* param = processor_.getParameters()[3]) { // expFilterParam is index 3
+        if (auto* boolParam = dynamic_cast<juce::AudioParameterBool*>(param)) {
+            *boolParam = enabled;
+        }
+    }
+    
+    // Also update plugin controller and pipeline for immediate effect
     processor_.getPluginController().setExpEnabled(enabled);
     if (auto* s = processor_.getSenderPipeline()) s->setExpEnabled(enabled);
 }
 
 inline void MIDISplitterEditor::handleVolFilterChange(bool enabled) {
+    // Update automation parameter
+    if (auto* param = processor_.getParameters()[4]) { // volFilterParam is index 4
+        if (auto* boolParam = dynamic_cast<juce::AudioParameterBool*>(param)) {
+            *boolParam = enabled;
+        }
+    }
+    
+    // Also update plugin controller and pipeline for immediate effect
     processor_.getPluginController().setVolEnabled(enabled);
     if (auto* s = processor_.getSenderPipeline()) s->setVolEnabled(enabled);
 }
 
 inline void MIDISplitterEditor::timerCallback()
 {
-    auto& ctrl = processor_.getPluginController();
-    int vc = ctrl.getVoiceCount();
-
-    if (static_cast<int>(slider_->getValue()) != vc) {
-        slider_->setValue(vc, juce::dontSendNotification);
-        voiceCountLabel_->setText(juce::String(vc), juce::dontSendNotification);
+    // Read from automation parameters to ensure UI reflects automation changes
+    auto& params = processor_.getParameters();
+    
+    // Get parameter values (Bypass=0, VoiceCount=1, Mod=2, Exp=3, Vol=4)
+    int voiceCount = 4;
+    bool modEnabled = true;
+    bool expEnabled = true;
+    bool volEnabled = true;
+    
+    if (auto* vcParam = dynamic_cast<juce::AudioParameterInt*>(params[1])) {
+        voiceCount = vcParam->get();
+    }
+    if (auto* modParam = dynamic_cast<juce::AudioParameterBool*>(params[2])) {
+        modEnabled = modParam->get();
+    }
+    if (auto* expParam = dynamic_cast<juce::AudioParameterBool*>(params[3])) {
+        expEnabled = expParam->get();
+    }
+    if (auto* volParam = dynamic_cast<juce::AudioParameterBool*>(params[4])) {
+        volEnabled = volParam->get();
     }
 
-    if (modCheckbox_ && modCheckbox_->isChecked() != ctrl.isModEnabled())
-        modCheckbox_->setChecked(ctrl.isModEnabled(), juce::dontSendNotification);
+    // Update voice count UI if changed
+    if (static_cast<int>(slider_->getValue()) != voiceCount) {
+        slider_->setValue(voiceCount, juce::dontSendNotification);
+        voiceCountLabel_->setText(juce::String(voiceCount), juce::dontSendNotification);
+    }
 
-    if (expCheckbox_ && expCheckbox_->isChecked() != ctrl.isExpEnabled())
-        expCheckbox_->setChecked(ctrl.isExpEnabled(), juce::dontSendNotification);
+    // Update CC filter checkboxes if changed
+    if (modCheckbox_ && modCheckbox_->isChecked() != modEnabled)
+        modCheckbox_->setChecked(modEnabled, juce::dontSendNotification);
 
-    if (volCheckbox_ && volCheckbox_->isChecked() != ctrl.isVolEnabled())
-        volCheckbox_->setChecked(ctrl.isVolEnabled(), juce::dontSendNotification);
+    if (expCheckbox_ && expCheckbox_->isChecked() != expEnabled)
+        expCheckbox_->setChecked(expEnabled, juce::dontSendNotification);
+
+    if (volCheckbox_ && volCheckbox_->isChecked() != volEnabled)
+        volCheckbox_->setChecked(volEnabled, juce::dontSendNotification);
 }
 
 inline void MIDISplitterEditor::togglePluginInfoPopup()
