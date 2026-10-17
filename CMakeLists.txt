@@ -7,6 +7,28 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Detect current git branch for beta/experimental naming
+execute_process(
+    COMMAND git branch --show-current
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_BRANCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+# Set product name based on branch
+if(GIT_BRANCH STREQUAL "main" OR GIT_BRANCH STREQUAL "")
+    set(PLUGIN_PRODUCT_NAME "MIDI Splitter")
+else()
+    # Extract feature name from branch (e.g., "feature/daw-automation" -> "daw-automation")
+    string(REGEX REPLACE "^(feature|fix|experiment)/(.+)$" "\\2" BRANCH_NAME "${GIT_BRANCH}")
+    # Use NLA naming convention: nla_midisplitter_branch-name_v0.0.1
+    set(PLUGIN_PRODUCT_NAME "nla_midisplitter_${BRANCH_NAME}_v0.0.1")
+endif()
+
+message(STATUS "Git Branch: ${GIT_BRANCH}")
+message(STATUS "Plugin Name: ${PLUGIN_PRODUCT_NAME}")
+
 # Add JUCE subdirectory (local installation)
 add_subdirectory(JUCE)
 
@@ -25,7 +47,7 @@ juce_add_plugin(MIDISplitterPlugin
     PLUGIN_MANUFACTURER_CODE Nliv
     PLUGIN_CODE Mdsp
     FORMATS ${PLUGIN_FORMATS}
-    PRODUCT_NAME "MIDI Splitter"
+    PRODUCT_NAME "${PLUGIN_PRODUCT_NAME}"
     DESCRIPTION "Distribute MIDI notes across multiple plugin instances"
     VERSION "0.0.16"
     # IS_MIDI_EFFECT affects JUCE's MIDI handling and VST3 categorization

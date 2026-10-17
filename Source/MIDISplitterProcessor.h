@@ -202,6 +202,13 @@ private:
     std::unique_ptr<SenderPipeline> senderPipeline_;
     std::unique_ptr<ReceiverPipeline> receiverPipeline_;
     
+    // Automatable parameters
+    juce::AudioParameterBool* bypassParam_;
+    juce::AudioParameterBool* modFilterParam_;
+    juce::AudioParameterBool* expFilterParam_;
+    juce::AudioParameterBool* volFilterParam_;
+    juce::AudioParameterInt* voiceCountParam_;
+    
     // Audio processing state
     std::atomic<double> currentSampleRate_;
     std::atomic<int> currentBlockSize_;
@@ -239,6 +246,57 @@ inline MIDISplitterProcessor::MIDISplitterProcessor()
     , processingEnabled_(true)
     , isPrepared_(false)
     , currentLatencySamples_(0) {
+    
+    // Add automatable parameters in order: Bypass, Voice Count, Mod, Exp, Vol
+    
+    // 1. Bypass (Magenta-ish color in Logic)
+    addParameter(bypassParam_ = new juce::AudioParameterBool(
+        "bypass",                           // parameter ID
+        "Bypass",                           // parameter name
+        false,                              // default value (not bypassed)
+        juce::String(),                     // parameter label
+        [](bool value, int) { return value ? "Enabled" : "Disabled"; },  // value to text
+        [](const juce::String& text) { return text == "Enabled"; }       // text to value
+    ));
+    
+    // 2. Voice Count (Gold color - was Vol's color)
+    addParameter(voiceCountParam_ = new juce::AudioParameterInt(
+        "voiceCount",                       // parameter ID
+        "Voice Count",                      // parameter name
+        2,                                  // minimum value
+        16,                                 // maximum value
+        4                                   // default value
+    ));
+    
+    // 3. Mod (Deep Amber - was Mod's color, stays the same)
+    addParameter(modFilterParam_ = new juce::AudioParameterBool(
+        "modFilter",                        // parameter ID
+        "Mod",                              // parameter name (removed "Filter")
+        true,                               // default value (enabled)
+        juce::String(),                     // parameter label
+        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
+        [](const juce::String& text) { return text == "Enabled"; }
+    ));
+    
+    // 4. Exp (Bright Blue - was Exp's color, swapped with Mod)
+    addParameter(expFilterParam_ = new juce::AudioParameterBool(
+        "expFilter",                        // parameter ID
+        "Exp",                              // parameter name (removed "Filter")
+        true,                               // default value (enabled)
+        juce::String(),                     // parameter label
+        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
+        [](const juce::String& text) { return text == "Enabled"; }
+    ));
+    
+    // 5. Vol (Logic default yellow)
+    addParameter(volFilterParam_ = new juce::AudioParameterBool(
+        "volFilter",                        // parameter ID
+        "Vol",                              // parameter name (removed "Filter")
+        true,                               // default value (enabled)
+        juce::String(),                     // parameter label
+        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
+        [](const juce::String& text) { return text == "Enabled"; }
+    ));
     
     // Initialize core components
     pluginController_ = std::make_unique<PluginController>();
@@ -288,6 +346,36 @@ inline bool MIDISplitterProcessor::isBusesLayoutSupported(const BusesLayout& lay
 
 inline void MIDISplitterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
     juce::ScopedNoDenormals noDenormals;
+    
+    // Check bypass parameter first - if bypassed, pass MIDI through unchanged
+    if (*bypassParam_) {
+        // Bypass is enabled - pass through MIDI unchanged
+        return;
+    }
+    
+    // Update plugin controller from automation parameters
+    bool modEnabled = *modFilterParam_;
+    bool expEnabled = *expFilterParam_;
+    bool volEnabled = *volFilterParam_;
+    int voiceCount = *voiceCountParam_;
+    
+    // Sync to plugin controller if changed
+    if (pluginController_->isModEnabled() != modEnabled) {
+        pluginController_->setModEnabled(modEnabled);
+        if (senderPipeline_) senderPipeline_->setModEnabled(modEnabled);
+    }
+    if (pluginController_->isExpEnabled() != expEnabled) {
+        pluginController_->setExpEnabled(expEnabled);
+        if (senderPipeline_) senderPipeline_->setExpEnabled(expEnabled);
+    }
+    if (pluginController_->isVolEnabled() != volEnabled) {
+        pluginController_->setVolEnabled(volEnabled);
+        if (senderPipeline_) senderPipeline_->setVolEnabled(volEnabled);
+    }
+    if (pluginController_->getVoiceCount() != voiceCount) {
+        pluginController_->setVoiceCount(voiceCount);
+        if (senderPipeline_) senderPipeline_->setVoiceCount(voiceCount);
+    }
     
     if (!processingEnabled_ || !isPrepared_) {
         // Clear MIDI output if processing is disabled
@@ -420,13 +508,28 @@ inline void MIDISplitterProcessor::changeProgramName(int index, const juce::Stri
 
 inline void MIDISplitterProcessor::getStateInformation(juce::MemoryBlock& destData) {
     std::lock_guard<std::mutex> lock(configurationMutex_);
+    
+    // Sync parameter values to PluginController before saving
+    pluginController_->setModEnabled(*modFilterParam_);
+    pluginController_->setExpEnabled(*expFilterParam_);
+    pluginController_->setVolEnabled(*volFilterParam_);
+    pluginController_->setVoiceCount(*voiceCountParam_);
+    
     pluginController_->saveState(destData);
 }
 
 inline void MIDISplitterProcessor::setStateInformation(const void* data, int sizeInBytes) {
     std::lock_guard<std::mutex> lock(configurationMutex_);
-    if (pluginController_->restoreState(data, sizeInBytes))
+    
+    if (pluginController_->restoreState(data, sizeInBytes)) {
+        // Sync restored values to automation parameters
+        *modFilterParam_ = pluginController_->isModEnabled();
+        *expFilterParam_ = pluginController_->isExpEnabled();
+        *volFilterParam_ = pluginController_->isVolEnabled();
+        *voiceCountParam_ = pluginController_->getVoiceCount();
+        
         initializePipeline();
+    }
 }
 
 inline PluginController& MIDISplitterProcessor::getPluginController() {
