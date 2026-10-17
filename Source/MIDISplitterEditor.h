@@ -196,11 +196,12 @@ private:
                 if (onAboutClicked) onAboutClicked();
             } else if (e.y >= 60 && e.y < 80) {
                 // "Setup Guide" clicked
-                // TODO: Show setup guide
+                if (onSetupGuideClicked) onSetupGuideClicked();
             }
         }
         
         std::function<void()> onAboutClicked;
+        std::function<void()> onSetupGuideClicked;
 
     private:
         bool aboutHovered_ { false };
@@ -693,6 +694,12 @@ inline void MIDISplitterEditor::togglePluginInfoPopup()
             pluginInfoPopup_->onAboutClicked = [this]() {
                 hidePluginInfoPopup();
                 showAboutPopup();
+            };
+            pluginInfoPopup_->onSetupGuideClicked = [this]() {
+                hidePluginInfoPopup();
+                // Open setup guide URL in default browser
+                juce::URL setupGuideURL("https://github.com/joe-codes-things/midisplitter/blob/main/README.md");
+                setupGuideURL.launchInDefaultBrowser();
             };
         }
         

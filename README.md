@@ -128,6 +128,8 @@ The plugin features a clean, minimal design focused on core functionality with a
 
 ## Building from Source
 
+> **⚠️ CRITICAL:** The AU plugin MUST be built as `kAudioUnitType_MusicDevice` (Instrument type). Never change `AU_MAIN_TYPE` in CMakeLists.txt to `kAudioUnitType_MIDIProcessor` or any other type. This will break Logic Pro compatibility. See [BUILD_NOTES.md](BUILD_NOTES.md) for details.
+
 ### Prerequisites
 
 - CMake 3.22 or higher

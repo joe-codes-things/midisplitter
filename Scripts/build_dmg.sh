@@ -96,6 +96,15 @@ cp "$PKG_PATH" "$DMG_STAGE/$PKG_NAME"
 # Uninstaller app
 cp -R "$APP_STAGE" "$DMG_STAGE/MIDI Splitter Uninstaller.app"
 
+# README from root folder
+README_SRC="$PROJECT_DIR/README.md"
+if [ -f "$README_SRC" ]; then
+    cp "$README_SRC" "$DMG_STAGE/README.md"
+    echo "README included."
+else
+    echo -e "${YELLOW}Warning: README.md not found at project root — skipping.${NC}"
+fi
+
 # User manual PDF (if present)
 USER_MANUAL_PDF="$PROJECT_DIR/Resources/MIDI_Splitter_User_Guide.pdf"
 if [ -f "$USER_MANUAL_PDF" ]; then

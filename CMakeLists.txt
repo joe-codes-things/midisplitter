@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MIDISplitterPlugin VERSION 0.0.15)
+project(MIDISplitterPlugin VERSION 0.0.16)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
@@ -14,6 +14,12 @@ add_subdirectory(JUCE)
 set(PLUGIN_FORMATS VST3 AU)
 
 # Create the plugin target
+# 
+# ⚠️  CRITICAL: AU_MAIN_TYPE MUST BE kAudioUnitType_MusicDevice
+# DO NOT change this to kAudioUnitType_MIDIProcessor or any other type.
+# Logic and other DAWs require this to be a MusicDevice (instrument) type.
+# Changing this will break AU functionality in Logic Pro.
+# 
 juce_add_plugin(MIDISplitterPlugin
     COMPANY_NAME "Nine Lives Audio"
     PLUGIN_MANUFACTURER_CODE Nliv
@@ -21,7 +27,9 @@ juce_add_plugin(MIDISplitterPlugin
     FORMATS ${PLUGIN_FORMATS}
     PRODUCT_NAME "MIDI Splitter"
     DESCRIPTION "Distribute MIDI notes across multiple plugin instances"
-    VERSION "0.0.15"
+    VERSION "0.0.16"
+    # IS_MIDI_EFFECT affects JUCE's MIDI handling and VST3 categorization
+    # It does NOT control AU categorization (that's handled by AU_MAIN_TYPE)
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
@@ -29,6 +37,8 @@ juce_add_plugin(MIDISplitterPlugin
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES "Instrument" "MIDI"
+    # ⚠️  CRITICAL: DO NOT CHANGE AU_MAIN_TYPE FROM kAudioUnitType_MusicDevice
+    # This MUST remain as MusicDevice for Logic Pro compatibility
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
     AU_SANDBOX_SAFE TRUE
     PLUGIN_AAX_IDENTIFIER com.ninelivesaudio.midisplitter
