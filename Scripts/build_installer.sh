@@ -78,11 +78,11 @@ echo ""
 # ── Copy payloads ────────────────────────────────────────────────────────────
 echo "Staging payloads..."
 
-# Copy and rename VST3 to versioned name
-cp -R "$VST3_SRC" "$WORK_DIR/vst3_payload/$VST3_DEST_DIR/nla_midisplitter_v${VERSION}.vst3"
+# Copy VST3 without version number in filename
+cp -R "$VST3_SRC" "$WORK_DIR/vst3_payload/$VST3_DEST_DIR/nla_midisplitter.vst3"
 
-# Copy and rename AU to versioned name
-cp -R "$AU_SRC" "$WORK_DIR/au_payload/$AU_DEST_DIR/nla_midisplitter_v${VERSION}.component"
+# Copy AU without version number in filename
+cp -R "$AU_SRC" "$WORK_DIR/au_payload/$AU_DEST_DIR/nla_midisplitter.component"
 
 if [ "$GUIDE_AVAILABLE" = true ]; then
     cp "$GUIDE_SRC" "$WORK_DIR/guide_payload/tmp_guide/MIDI_Splitter_User_Guide.pdf"

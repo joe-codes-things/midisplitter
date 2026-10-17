@@ -9,7 +9,11 @@ AU_SYSTEM="/Library/Audio/Plug-Ins/Components/MIDI Splitter.component"
 VST3_USER="$HOME/Library/Audio/Plug-Ins/VST3/MIDI Splitter.vst3"
 AU_USER="$HOME/Library/Audio/Plug-Ins/Components/MIDI Splitter.component"
 
-# Also remove versioned exports that the installer may have placed
+# Current non-versioned naming
+VST3_CURRENT="/Library/Audio/Plug-Ins/VST3/nla_midisplitter.vst3"
+AU_CURRENT="/Library/Audio/Plug-Ins/Components/nla_midisplitter.component"
+
+# Also remove old versioned plugins (from previous installations)
 VST3_VERSIONED_GLOB="/Library/Audio/Plug-Ins/VST3/nla_midisplitter_v*.vst3"
 AU_VERSIONED_GLOB="/Library/Audio/Plug-Ins/Components/nla_midisplitter_v*.component"
 
@@ -29,7 +33,11 @@ remove_item() {
 remove_item "$VST3_SYSTEM"
 remove_item "$AU_SYSTEM"
 
-# Versioned names
+# Current non-versioned names
+remove_item "$VST3_CURRENT"
+remove_item "$AU_CURRENT"
+
+# Old versioned names (from previous installations)
 for f in $VST3_VERSIONED_GLOB; do remove_item "$f"; done
 for f in $AU_VERSIONED_GLOB;   do remove_item "$f"; done
 

@@ -186,17 +186,17 @@ BUILD_COUNT=$(cat "$SCRIPT_DIR/.build_count" 2>/dev/null || echo "0")
 EXPORTS_DIR="$SCRIPT_DIR/exports"
 mkdir -p "$EXPORTS_DIR"
 
-# Export VST3 with version-only naming format
+# Export VST3 with NLA naming format (no version number)
 if [ -d "$VST3_PATH" ]; then
-    EXPORT_NAME="nla_midisplitter_v${VERSION}.vst3"
+    EXPORT_NAME="nla_midisplitter.vst3"
     EXPORT_PATH="$EXPORTS_DIR/$EXPORT_NAME"
     cp -R "$VST3_PATH" "$EXPORT_PATH"
     echo -e "${GREEN}✓${NC} Exported VST3: $EXPORT_NAME"
 fi
 
-# Export AU with version-only naming format (macOS only)
+# Export AU with NLA naming format (macOS only, no version number)
 if [[ "$OSTYPE" == "darwin"* ]] && [ -d "$AU_PATH" ]; then
-    EXPORT_NAME="nla_midisplitter_v${VERSION}.component"
+    EXPORT_NAME="nla_midisplitter.component"
     EXPORT_PATH="$EXPORTS_DIR/$EXPORT_NAME"
     cp -R "$AU_PATH" "$EXPORT_PATH"
     echo -e "${GREEN}✓${NC} Exported AU: $EXPORT_NAME"

@@ -12,9 +12,9 @@ AU_SRC="$BUILD_DIR/MIDISplitterPlugin_artefacts/Release/AU/MIDI Splitter.compone
 # Auto-derive version from CMakeLists.txt
 BASE_VERSION=$(grep "project(MIDISplitterPlugin VERSION" "$PROJECT_DIR/CMakeLists.txt" | sed 's/.*VERSION \([0-9.]*\).*/\1/')
 
-# Use NLA naming format: nla_midisplitter_v0.0.13
-VST3_DEST="/Library/Audio/Plug-Ins/VST3/nla_midisplitter_v${BASE_VERSION}.vst3"
-AU_DEST="/Library/Audio/Plug-Ins/Components/nla_midisplitter_v${BASE_VERSION}.component"
+# Use NLA naming format: nla_midisplitter (no version number)
+VST3_DEST="/Library/Audio/Plug-Ins/VST3/nla_midisplitter.vst3"
+AU_DEST="/Library/Audio/Plug-Ins/Components/nla_midisplitter.component"
 
 echo "========================================="
 echo "MIDI Splitter Plugin Sign & Install"
