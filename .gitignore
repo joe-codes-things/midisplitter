@@ -44,3 +44,10 @@ docs/
 
 # Kiro configuration
 .kiro/
+
+# Test projects
+*.logicx/
+midisplitter_CubaseTest/
+
+# Research materials (example plugins)
+research/
