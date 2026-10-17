@@ -21,10 +21,9 @@ if(GIT_BRANCH STREQUAL "main" OR GIT_BRANCH STREQUAL "")
     set(PLUGIN_PRODUCT_NAME "MIDI Splitter")
 else()
     # Extract feature name from branch (e.g., "feature/daw-automation" -> "daw-automation")
-    string(REGEX REPLACE "^(feature|fix|experiment)/(.+)$" "\\2" BRANCH_SUFFIX "${GIT_BRANCH}")
-    # Convert to title case and add BETA suffix
-    string(REPLACE "-" " " BRANCH_SUFFIX "${BRANCH_SUFFIX}")
-    set(PLUGIN_PRODUCT_NAME "MIDI Splitter [BETA-${BRANCH_SUFFIX}]")
+    string(REGEX REPLACE "^(feature|fix|experiment)/(.+)$" "\\2" BRANCH_NAME "${GIT_BRANCH}")
+    # Use NLA naming convention: nla_midisplitter_branch-name_v0.0.1
+    set(PLUGIN_PRODUCT_NAME "nla_midisplitter_${BRANCH_NAME}_v0.0.1")
 endif()
 
 message(STATUS "Git Branch: ${GIT_BRANCH}")
