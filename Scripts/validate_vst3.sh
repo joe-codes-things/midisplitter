@@ -8,7 +8,7 @@ set -e  # Exit on any error
 # Configuration
 TARGET_NAME="MIDISplitterPlugin"
 PLUGIN_NAME="MIDI Splitter"
-BUILD_DIR="build"
+BUILD_DIR="build/macOS"
 VALIDATOR_PATH=""
 
 # Colors for output

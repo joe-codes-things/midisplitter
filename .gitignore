@@ -35,9 +35,6 @@ Makefile
 # Google Test
 _deps/
 
-# Exports (pre-built binaries - don't commit to public repo)
-exports/
-
 # Build count tracking
 .build_count
 

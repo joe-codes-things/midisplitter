@@ -1,6 +1,6 @@
 #!/bin/bash
-# Quick navigation to main build output directory
-cd "$(dirname "$0")/../build/MIDISplitterPlugin_artefacts/Release"
+# Quick navigation to staged macOS build artifacts
+cd "$(dirname "$0")/../builds/macOS"
 pwd
 echo ""
 echo "Available builds:"

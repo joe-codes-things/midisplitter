@@ -8,7 +8,7 @@ set -e  # Exit on any error
 # Configuration
 TARGET_NAME="MIDISplitterPlugin"
 PLUGIN_NAME="MIDI Splitter"
-BUILD_DIR="build"
+BUILD_DIR="build/macOS"
 AU_TYPE="aumf"  # MIDI Effect
 MANUFACTURER_CODE="Mdar"
 PLUGIN_CODE="Mdar"

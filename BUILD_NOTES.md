@@ -56,7 +56,7 @@ VST3 uses different categorization and is configured correctly as:
 ./Scripts/build_all.sh     # check Windows VM readiness, then build both platforms
 ```
 
-The cross-platform scripts keep CMake state under `build/macOS/` and `build/Windows/` and stage artifacts in `builds/macOS/` and `builds/Windows/`. Windows VM connection settings belong in the Git-ignored `.windows-vm.local`; see [docs/WINDOWS_BUILD.md](docs/WINDOWS_BUILD.md). Never put a private SSH key in the repository or transfer archive.
+All distributable plugin and installer artifacts are staged under `builds/macOS/` or `builds/Windows/`; no build script writes release artifacts to a separate `exports/` folder. CMake state, test products, and temporary build work stay in the separate `build/macOS/` tree (and `build/Windows/` inside the VM workspace). Windows VM connection settings belong in the Git-ignored `.windows-vm.local`; see [docs/WINDOWS_BUILD.md](docs/WINDOWS_BUILD.md). Never put a private SSH key in the repository or transfer archive.
 
 MIDI Splitter is available for macOS and Windows: macOS builds VST3 and AU; Windows builds x64 VST3. The Windows installer is unsigned and installs only the VST3 bundle if run.
 

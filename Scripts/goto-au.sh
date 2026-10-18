@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quick navigation to AU build output
-cd "$(dirname "$0")/../build/MIDISplitterPlugin_artefacts/Release/AU"
+# Quick navigation to the staged AU artifact
+cd "$(dirname "$0")/../builds/macOS/AU"
 pwd
 ls -lh
