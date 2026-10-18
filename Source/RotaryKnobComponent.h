@@ -100,12 +100,12 @@ public:
         
         // Draw value text below knob
         g.setColour(UIColors::PrimaryText);
-        g.setFont(juce::Font(24.0f, juce::Font::bold));
+        g.setFont(juce::Font(juce::FontOptions(24.0f, juce::Font::bold)));
         g.drawText(juce::String(currentValue_), textArea.removeFromTop(28), juce::Justification::centred);
         
         // Draw "Voices" label
         g.setColour(UIColors::SecondaryText);
-        g.setFont(juce::Font(12.0f));
+        g.setFont(juce::Font(juce::FontOptions(12.0f)));
         g.drawText("Voices", textArea, juce::Justification::centred);
     }
     
@@ -181,4 +181,3 @@ private:
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RotaryKnobComponent)
 };
-

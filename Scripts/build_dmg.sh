@@ -8,9 +8,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-EXPORTS_DIR="$PROJECT_DIR/exports"
+ARTIFACTS_DIR="$PROJECT_DIR/builds/macOS"
+INSTALLER_OUTPUT_DIR="$ARTIFACTS_DIR/Installers"
 INSTALLER_DIR="$PROJECT_DIR/installer"
-WORK_DIR="$PROJECT_DIR/dmg_work"
+WORK_DIR="$PROJECT_DIR/build/macOS/dmg_work"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -23,7 +24,7 @@ VERSION=$(grep "project(MIDISplitterPlugin VERSION" "$PROJECT_DIR/CMakeLists.txt
 
 PKG_NAME="MIDISplitter_v${VERSION}_macOS.pkg"
 DMG_NAME="MIDISplitter_v${VERSION}_macOS.dmg"
-PKG_PATH="$EXPORTS_DIR/$PKG_NAME"
+PKG_PATH="$INSTALLER_OUTPUT_DIR/$PKG_NAME"
 
 echo "========================================="
 echo "MIDI Splitter DMG Builder"
@@ -131,7 +132,7 @@ echo ""
 echo "Creating DMG..."
 
 TEMP_DMG="$WORK_DIR/temp.dmg"
-FINAL_DMG="$EXPORTS_DIR/$DMG_NAME"
+FINAL_DMG="$INSTALLER_OUTPUT_DIR/$DMG_NAME"
 
 # Create a writable DMG from the staged folder
 hdiutil create \

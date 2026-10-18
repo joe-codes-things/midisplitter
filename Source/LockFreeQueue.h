@@ -2,6 +2,8 @@
 
 #include <juce_core/juce_core.h>
 #include <atomic>
+#include <limits>
+#include <stdexcept>
 #include <vector>
 #include "IPCMessage.h"
 
@@ -23,8 +25,8 @@ public:
      * @param capacity Maximum number of items in queue
      */
     explicit LockFreeQueue(int capacity = 1024)
-        : fifo_(capacity)
-        , buffer_(capacity)
+        : fifo_(validateCapacity(capacity))
+        , buffer_(static_cast<size_t>(capacity))
     {
     }
     
@@ -40,7 +42,7 @@ public:
         
         if (size1 > 0)
         {
-            buffer_[start1] = item;
+            buffer_[static_cast<size_t>(start1)] = item;
             fifo_.finishedWrite(1);
             return true;
         }
@@ -60,7 +62,7 @@ public:
         
         if (size1 > 0)
         {
-            item = buffer_[start1];
+            item = buffer_[static_cast<size_t>(start1)];
             fifo_.finishedRead(1);
             return true;
         }
@@ -79,7 +81,8 @@ public:
         if (items.empty())
             return 0;
             
-        int itemsToPush = static_cast<int>(items.size());
+        int itemsToPush = static_cast<int>(std::min(
+            items.size(), static_cast<size_t>(std::numeric_limits<int>::max())));
         if (maxItems > 0 && itemsToPush > maxItems)
             itemsToPush = maxItems;
             
@@ -94,7 +97,7 @@ public:
             int count1 = std::min(size1, itemsToPush);
             for (int i = 0; i < count1; ++i)
             {
-                buffer_[start1 + i] = items[i];
+                buffer_[static_cast<size_t>(start1 + i)] = items[static_cast<size_t>(i)];
             }
             itemsPushed += count1;
         }
@@ -105,7 +108,8 @@ public:
             int count2 = std::min(size2, itemsToPush - itemsPushed);
             for (int i = 0; i < count2; ++i)
             {
-                buffer_[start2 + i] = items[itemsPushed + i];
+                buffer_[static_cast<size_t>(start2 + i)] =
+                    items[static_cast<size_t>(itemsPushed + i)];
             }
             itemsPushed += count2;
         }
@@ -141,7 +145,7 @@ public:
         {
             for (int i = 0; i < size1; ++i)
             {
-                items.push_back(buffer_[start1 + i]);
+                items.push_back(buffer_[static_cast<size_t>(start1 + i)]);
             }
             itemsPopped += size1;
         }
@@ -151,7 +155,7 @@ public:
         {
             for (int i = 0; i < size2; ++i)
             {
-                items.push_back(buffer_[start2 + i]);
+                items.push_back(buffer_[static_cast<size_t>(start2 + i)]);
             }
             itemsPopped += size2;
         }
@@ -218,6 +222,13 @@ public:
     }
     
 private:
+    static int validateCapacity(int capacity)
+    {
+        if (capacity <= 0)
+            throw std::invalid_argument("LockFreeQueue capacity must be positive");
+        return capacity;
+    }
+
     juce::AbstractFifo fifo_;
     std::vector<T> buffer_;
 };

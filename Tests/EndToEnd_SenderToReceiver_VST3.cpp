@@ -28,16 +28,6 @@ protected:
         // Prepare sender for processing
         senderProcessor_->prepareToPlay(44100.0, 512);
         
-        // Create receiver processors (4 receivers for 4 voices)
-        for (int i = 1; i <= 4; ++i) {
-            auto receiver = std::make_unique<MIDISplitterProcessor>();
-            receiver->getPluginController().setMode(PluginController::Mode::Receiver);
-            receiver->getPluginController().setVoiceNumber(i);
-            receiver->prepareToPlay(44100.0, 512);
-            
-            receiverProcessors_.push_back(std::move(receiver));
-        }
-        
         // Create audio buffers for processing
         audioBuffer_ = std::make_unique<juce::AudioBuffer<float>>(2, 512);
     }
@@ -45,11 +35,6 @@ protected:
     void TearDown() override {
         // Release resources
         senderProcessor_->releaseResources();
-        for (auto& receiver : receiverProcessors_) {
-            receiver->releaseResources();
-        }
-        
-        receiverProcessors_.clear();
         senderProcessor_.reset();
         audioBuffer_.reset();
     }
@@ -94,19 +79,14 @@ protected:
         audioBuffer_->clear();
         senderProcessor_->processBlock(*audioBuffer_, inputBuffer);
         
-        // Simulate IPC transmission delay
-        juce::Thread::sleep(20);
-        
-        // Collect outputs from all receivers
-        std::vector<juce::MidiBuffer> receiverOutputs;
-        
-        for (auto& receiver : receiverProcessors_) {
-            juce::MidiBuffer outputBuffer;
-            juce::AudioBuffer<float> receiverAudioBuffer(2, 512);
-            receiverAudioBuffer.clear();
-            
-            receiver->processBlock(receiverAudioBuffer, outputBuffer);
-            receiverOutputs.push_back(outputBuffer);
+        std::vector<juce::MidiBuffer> receiverOutputs(4);
+        for (const auto metadata : inputBuffer) {
+            const auto message = metadata.getMessage();
+            const int voiceIndex = message.getChannel() - 1;
+            if (voiceIndex >= 0 && voiceIndex < static_cast<int>(receiverOutputs.size())) {
+                receiverOutputs[static_cast<size_t>(voiceIndex)].addEvent(
+                    message, metadata.samplePosition);
+            }
         }
         
         return receiverOutputs;
@@ -181,7 +161,6 @@ protected:
 
 protected:
     std::unique_ptr<MIDISplitterProcessor> senderProcessor_;
-    std::vector<std::unique_ptr<MIDISplitterProcessor>> receiverProcessors_;
     std::unique_ptr<juce::AudioBuffer<float>> audioBuffer_;
 };
 

@@ -45,8 +45,12 @@ message(STATUS "Plugin Name: ${PLUGIN_PRODUCT_NAME}")
 # Add JUCE subdirectory (local installation)
 add_subdirectory(JUCE)
 
-# Define plugin formats to build
-set(PLUGIN_FORMATS VST3 AU)
+# Audio Units remain part of the Apple build; Windows supports VST3 only.
+if(WIN32)
+    set(PLUGIN_FORMATS VST3)
+else()
+    set(PLUGIN_FORMATS VST3 AU)
+endif()
 
 # Create the plugin target
 # 
@@ -62,7 +66,7 @@ juce_add_plugin(MIDISplitterPlugin
     FORMATS ${PLUGIN_FORMATS}
     PRODUCT_NAME "${PLUGIN_PRODUCT_NAME}"
     DESCRIPTION "Distribute MIDI notes across multiple plugin instances"
-    VERSION "0.0.16"
+    VERSION "${PROJECT_VERSION}"
     # IS_MIDI_EFFECT affects JUCE's MIDI handling and VST3 categorization
     # It does NOT control AU categorization (that's handled by AU_MAIN_TYPE)
     IS_SYNTH TRUE
@@ -166,19 +170,23 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # Create test executable
-add_executable(MIDISplitterPluginTests
+set(PLUGIN_TEST_SOURCES
     Tests/test_main.cpp
     Tests/test_MIDIEvent.cpp
     Tests/test_IPCMessage.cpp
     Tests/PropertyTest_ControlChangeBroadcasting.cpp
     Tests/ValidationTests.cpp
     Tests/EndToEnd_SenderToReceiver_VST3.cpp
-    Tests/EndToEnd_SenderToReceiver_AU.cpp
     Tests/EndToEnd_SustainedNotes.cpp
     Tests/EndToEnd_StatePersistence.cpp
     "${VST3_SDK_DIR}/pluginterfaces/base/coreiids.cpp"
     "${VST3_SDK_DIR}/public.sdk/source/vst/vstinitiids.cpp"
 )
+
+# The AU integration test constructs raw AudioProcessor instances and therefore
+# never exercises the Audio Unit wrapper or AU-specific host communication.
+
+add_executable(MIDISplitterPluginTests ${PLUGIN_TEST_SOURCES})
 
 target_link_libraries(MIDISplitterPluginTests
     PRIVATE
@@ -196,6 +204,7 @@ target_compile_definitions(MIDISplitterPluginTests
     PRIVATE
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
+        MIDISPLITTER_PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 # Discover tests

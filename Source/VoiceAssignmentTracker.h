@@ -4,6 +4,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <limits>
 #include "MIDIEvent.h"
 #include "ActiveNote.h"
 
@@ -32,12 +33,17 @@ public:
      * Record a note-on event and its assigned voice
      * @param note MIDI note number (0-127)
      * @param channel MIDI channel (0-15)
-     * @param voiceNumber Assigned voice number (1-8)
+     * @param voiceNumber Assigned voice number (1-16)
      * @param timestamp Event timestamp
      * @return true if recorded successfully
      */
-    bool recordNoteOn(uint8_t note, uint8_t channel, uint8_t voiceNumber, uint64_t timestamp)
+    bool recordNoteOn(uint8_t note, uint8_t channel, uint8_t voiceNumber, int64_t timestamp)
     {
+        if (voiceNumber < 1 || voiceNumber > 16)
+            return false;
+
+        const int64_t trackingTimestamp = getCurrentTimeUs();
+
         // Check capacity
         if (activeNotes_.size() >= maxActiveNotes_)
         {
@@ -59,6 +65,7 @@ public:
             // Update existing entry
             activeNotes_[key].voiceNumber = voiceNumber;
             activeNotes_[key].noteOnTimestamp = timestamp;
+            activeNotes_[key].trackingTimestamp = trackingTimestamp;
         }
         else
         {
@@ -68,6 +75,7 @@ public:
             activeNote.channel = channel;
             activeNote.voiceNumber = voiceNumber;
             activeNote.noteOnTimestamp = timestamp;
+            activeNote.trackingTimestamp = trackingTimestamp;
             
             activeNotes_[key] = activeNote;
         }
@@ -79,7 +87,7 @@ public:
      * Get the voice number for a note-off event
      * @param note MIDI note number (0-127)
      * @param channel MIDI channel (0-15)
-     * @return Voice number (1-8) if found, 0 if not found
+     * @return Voice number (1-16) if found, 0 if not found
      */
     uint8_t getVoiceForNoteOff(uint8_t note, uint8_t channel) const
     {
@@ -88,7 +96,7 @@ public:
         auto it = activeNotes_.find(key);
         if (it != activeNotes_.end())
         {
-            return it->second.voiceNumber;
+            return static_cast<uint8_t>(it->second.voiceNumber);
         }
         
         return 0;  // Note not found
@@ -107,7 +115,7 @@ public:
         auto it = activeNotes_.find(key);
         if (it != activeNotes_.end())
         {
-            uint8_t voiceNumber = it->second.voiceNumber;
+            uint8_t voiceNumber = static_cast<uint8_t>(it->second.voiceNumber);
             activeNotes_.erase(it);
             return voiceNumber;
         }
@@ -144,15 +152,19 @@ public:
      */
     int clearStaleNotes()
     {
-        uint64_t currentTime = getCurrentTimeMs();
+        const int64_t currentTime = getCurrentTimeUs();
+        const int64_t timeoutMs = static_cast<int64_t>(
+            std::min<uint64_t>(staleNoteTimeoutMs_,
+                               static_cast<uint64_t>(std::numeric_limits<int64_t>::max() / 1000)));
+        const int64_t timeoutUs = timeoutMs * 1000;
         int removedCount = 0;
         
         auto it = activeNotes_.begin();
         while (it != activeNotes_.end())
         {
-            uint64_t noteAge = currentTime - it->second.noteOnTimestamp;
+            const int64_t noteAge = currentTime - it->second.trackingTimestamp;
             
-            if (noteAge > staleNoteTimeoutMs_)
+            if (noteAge > timeoutUs)
             {
                 it = activeNotes_.erase(it);
                 removedCount++;
@@ -215,7 +227,7 @@ public:
     
     /**
      * Get notes active for a specific voice
-     * @param voiceNumber Voice number (1-8)
+     * @param voiceNumber Voice number (1-16)
      * @return Vector of active notes for the specified voice
      */
     std::vector<ActiveNote> getActiveNotesForVoice(uint8_t voiceNumber) const
@@ -255,10 +267,11 @@ private:
      * Get current time in milliseconds
      * @return Current time in milliseconds since epoch
      */
-    uint64_t getCurrentTimeMs() const
+    int64_t getCurrentTimeUs() const
     {
         auto now = std::chrono::steady_clock::now();
         auto duration = now.time_since_epoch();
-        return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        return static_cast<int64_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
     }
 };

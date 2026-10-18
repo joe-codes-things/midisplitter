@@ -71,6 +71,13 @@ public:
      * @return Reference to plugin controller
      */
     PluginController& getPluginController();
+
+    /**
+     * @brief Set the sender voice count and keep the host parameter synchronized
+     * @param voiceCount Number of voices
+     * @return true if the voice count is valid and was set
+     */
+    bool setVoiceCount(int voiceCount);
     
     /**
      * @brief Get current configuration
@@ -254,9 +261,9 @@ inline MIDISplitterProcessor::MIDISplitterProcessor()
         "bypass",                           // parameter ID
         "Bypass",                           // parameter name
         false,                              // default value (not bypassed)
-        juce::String(),                     // parameter label
-        [](bool value, int) { return value ? "Enabled" : "Disabled"; },  // value to text
-        [](const juce::String& text) { return text == "Enabled"; }       // text to value
+        juce::AudioParameterBoolAttributes()
+            .withStringFromValueFunction([](bool value, int) { return value ? "Enabled" : "Disabled"; })
+            .withValueFromStringFunction([](const juce::String& text) { return text == "Enabled"; })
     ));
     
     // 2. Voice Count (Gold color - was Vol's color)
@@ -273,9 +280,9 @@ inline MIDISplitterProcessor::MIDISplitterProcessor()
         "modFilter",                        // parameter ID
         "Mod",                              // parameter name (removed "Filter")
         true,                               // default value (enabled)
-        juce::String(),                     // parameter label
-        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
-        [](const juce::String& text) { return text == "Enabled"; }
+        juce::AudioParameterBoolAttributes()
+            .withStringFromValueFunction([](bool value, int) { return value ? "Enabled" : "Disabled"; })
+            .withValueFromStringFunction([](const juce::String& text) { return text == "Enabled"; })
     ));
     
     // 4. Exp (Bright Blue - was Exp's color, swapped with Mod)
@@ -283,9 +290,9 @@ inline MIDISplitterProcessor::MIDISplitterProcessor()
         "expFilter",                        // parameter ID
         "Exp",                              // parameter name (removed "Filter")
         true,                               // default value (enabled)
-        juce::String(),                     // parameter label
-        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
-        [](const juce::String& text) { return text == "Enabled"; }
+        juce::AudioParameterBoolAttributes()
+            .withStringFromValueFunction([](bool value, int) { return value ? "Enabled" : "Disabled"; })
+            .withValueFromStringFunction([](const juce::String& text) { return text == "Enabled"; })
     ));
     
     // 5. Vol (Logic default yellow)
@@ -293,9 +300,9 @@ inline MIDISplitterProcessor::MIDISplitterProcessor()
         "volFilter",                        // parameter ID
         "Vol",                              // parameter name (removed "Filter")
         true,                               // default value (enabled)
-        juce::String(),                     // parameter label
-        [](bool value, int) { return value ? "Enabled" : "Disabled"; },
-        [](const juce::String& text) { return text == "Enabled"; }
+        juce::AudioParameterBoolAttributes()
+            .withStringFromValueFunction([](bool value, int) { return value ? "Enabled" : "Disabled"; })
+            .withValueFromStringFunction([](const juce::String& text) { return text == "Enabled"; })
     ));
     
     // Initialize core components
@@ -337,7 +344,7 @@ inline void MIDISplitterProcessor::releaseResources() {
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
-inline bool MIDISplitterProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
+inline bool MIDISplitterProcessor::isBusesLayoutSupported(const BusesLayout&) const {
     // This is a MIDI effect, so we don't need specific audio channel configurations
     // Accept any layout
     return true;
@@ -494,15 +501,15 @@ inline int MIDISplitterProcessor::getCurrentProgram() {
     return 0;
 }
 
-inline void MIDISplitterProcessor::setCurrentProgram(int index) {
+inline void MIDISplitterProcessor::setCurrentProgram(int) {
     // No programs to set
 }
 
-inline const juce::String MIDISplitterProcessor::getProgramName(int index) {
+inline const juce::String MIDISplitterProcessor::getProgramName(int) {
     return "Default";
 }
 
-inline void MIDISplitterProcessor::changeProgramName(int index, const juce::String& newName) {
+inline void MIDISplitterProcessor::changeProgramName(int, const juce::String&) {
     // No programs to rename
 }
 
@@ -534,6 +541,16 @@ inline void MIDISplitterProcessor::setStateInformation(const void* data, int siz
 
 inline PluginController& MIDISplitterProcessor::getPluginController() {
     return *pluginController_;
+}
+
+inline bool MIDISplitterProcessor::setVoiceCount(int voiceCount) {
+    if (voiceCount < 2 || voiceCount > 16) {
+        return false;
+    }
+
+    *voiceCountParam_ = voiceCount;
+    pluginController_->setVoiceCount(voiceCount);
+    return true;
 }
 
 inline const PluginConfiguration& MIDISplitterProcessor::getConfiguration() const {
@@ -671,7 +688,7 @@ inline void MIDISplitterProcessor::cleanupPipeline() {
     receiverPipeline_.reset();
 }
 
-inline void MIDISplitterProcessor::handleModeChange(PluginController::Mode newMode) {
+inline void MIDISplitterProcessor::handleModeChange(PluginController::Mode) {
     std::lock_guard<std::mutex> lock(processingMutex_);
     
     // Reinitialize pipeline for new mode
@@ -713,8 +730,8 @@ inline void MIDISplitterProcessor::updateLatencyReporting() {
     }
     
     // Convert to samples
-    int latencySamples = static_cast<int>(measuredLatencyMs * currentSampleRate_ / 1000.0);
-    currentLatencySamples_ = latencySamples;
+    int latencySampleCount = static_cast<int>(measuredLatencyMs * currentSampleRate_ / 1000.0);
+    currentLatencySamples_ = latencySampleCount;
     
     // Update latency tracker targets based on current configuration
     latencyTracker_->setTarget(LatencyTracker::Stage::BufferWindow, 

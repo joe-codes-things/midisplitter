@@ -189,7 +189,8 @@ public:
      */
     bool isNearCapacity(size_t currentSize, double threshold = 0.8) const
     {
-        return currentSize >= (maxNotesPerBuffer_ * threshold);
+        return static_cast<double>(currentSize) >=
+               (static_cast<double>(maxNotesPerBuffer_) * threshold);
     }
     
     /**
@@ -215,7 +216,8 @@ public:
         if (maxNotesPerBuffer_ == 0)
             return 0.0;
             
-        return (static_cast<double>(currentSize) / maxNotesPerBuffer_) * 100.0;
+        return (static_cast<double>(currentSize) /
+                static_cast<double>(maxNotesPerBuffer_)) * 100.0;
     }
     
     /**
@@ -257,7 +259,7 @@ public:
         {
             auto newEnd = std::remove_if(buffer.begin(), buffer.end(),
                 [&toRemove, &buffer](const MIDIEvent& event) {
-                    size_t index = &event - &buffer[0];
+                    size_t index = static_cast<size_t>(&event - buffer.data());
                     return index < toRemove.size() && toRemove[index];
                 });
             buffer.erase(newEnd, buffer.end());

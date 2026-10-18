@@ -153,7 +153,7 @@ private:
     
     // Active measurements
     std::array<ActiveMeasurement, 16> activeMeasurements_;
-    std::atomic<int> nextMeasurementId_;
+    std::atomic<size_t> nextMeasurementId_;
     
     // Configuration
     std::atomic<bool> trackingEnabled_;
@@ -171,10 +171,10 @@ inline LatencyTracker::LatencyTracker()
     , trackingEnabled_(true) {
     
     // Initialize targets based on requirements
-    targets_[static_cast<int>(Stage::BufferWindow)] = 10.0f;    // 5-10ms buffer window
-    targets_[static_cast<int>(Stage::Distribution)] = 1.0f;     // < 1ms for distribution
-    targets_[static_cast<int>(Stage::IPCTransmission)] = 2.0f;  // < 2ms for IPC
-    targets_[static_cast<int>(Stage::Total)] = 10.0f;          // < 10ms total
+    targets_[static_cast<size_t>(Stage::BufferWindow)] = 10.0f;    // 5-10ms buffer window
+    targets_[static_cast<size_t>(Stage::Distribution)] = 1.0f;     // < 1ms for distribution
+    targets_[static_cast<size_t>(Stage::IPCTransmission)] = 2.0f;  // < 2ms for IPC
+    targets_[static_cast<size_t>(Stage::Total)] = 10.0f;          // < 10ms total
     
     // Initialize active measurements
     for (auto& measurement : activeMeasurements_) {
@@ -187,14 +187,15 @@ inline int LatencyTracker::startMeasurement(Stage stage) {
         return -1;
     }
     
-    int measurementId = nextMeasurementId_.fetch_add(1) % activeMeasurements_.size();
+    const size_t measurementIndex =
+        nextMeasurementId_.fetch_add(1, std::memory_order_relaxed) % activeMeasurements_.size();
     
-    auto& measurement = activeMeasurements_[measurementId];
+    auto& measurement = activeMeasurements_[measurementIndex];
     measurement.stage = stage;
     measurement.startTime = std::chrono::high_resolution_clock::now();
     measurement.active = true;
     
-    return measurementId;
+    return static_cast<int>(measurementIndex);
 }
 
 inline void LatencyTracker::endMeasurement(int measurementId) {
@@ -203,7 +204,7 @@ inline void LatencyTracker::endMeasurement(int measurementId) {
         return;
     }
     
-    auto& measurement = activeMeasurements_[measurementId];
+    auto& measurement = activeMeasurements_[static_cast<size_t>(measurementId)];
     if (!measurement.active) {
         return;
     }
@@ -226,7 +227,7 @@ inline void LatencyTracker::recordLatency(Stage stage, float latencyMs) {
     updateStats(stage, latencyMs);
     
     // Check if target was exceeded
-    int stageIndex = static_cast<int>(stage);
+    const size_t stageIndex = static_cast<size_t>(stage);
     float target = targets_[stageIndex].load();
     if (latencyMs > target) {
         stats_[stageIndex].targetExceeded = true;
@@ -234,7 +235,7 @@ inline void LatencyTracker::recordLatency(Stage stage, float latencyMs) {
 }
 
 inline const LatencyTracker::LatencyStats& LatencyTracker::getStats(Stage stage) const {
-    return stats_[static_cast<int>(stage)];
+    return stats_[static_cast<size_t>(stage)];
 }
 
 inline void LatencyTracker::resetStats() {
@@ -250,11 +251,11 @@ inline void LatencyTracker::resetStats() {
 }
 
 inline void LatencyTracker::setTarget(Stage stage, float targetMs) {
-    targets_[static_cast<int>(stage)] = targetMs;
+    targets_[static_cast<size_t>(stage)] = targetMs;
 }
 
 inline float LatencyTracker::getTarget(Stage stage) const {
-    return targets_[static_cast<int>(stage)].load();
+    return targets_[static_cast<size_t>(stage)].load();
 }
 
 inline bool LatencyTracker::hasTargetExceeded() const {
@@ -267,7 +268,7 @@ inline bool LatencyTracker::hasTargetExceeded() const {
 }
 
 inline float LatencyTracker::getTotalLatency() const {
-    return stats_[static_cast<int>(Stage::Total)].averageMs.load();
+    return stats_[static_cast<size_t>(Stage::Total)].averageMs.load();
 }
 
 inline juce::String LatencyTracker::getLatencyReport() const {
@@ -278,8 +279,8 @@ inline juce::String LatencyTracker::getLatencyReport() const {
     
     for (int i = 0; i < 4; ++i) {
         Stage stage = static_cast<Stage>(i);
-        const auto& stat = stats_[i];
-        float target = targets_[i].load();
+        const auto& stat = stats_[static_cast<size_t>(i)];
+        float target = targets_[static_cast<size_t>(i)].load();
         
         report << getStageString(stage) << ":\n";
         report << "  Average: " << juce::String(stat.averageMs.load(), 2) << " ms\n";
@@ -305,7 +306,7 @@ inline bool LatencyTracker::isTrackingEnabled() const {
 inline void LatencyTracker::updateStats(Stage stage, float latencyMs) {
     std::lock_guard<std::mutex> lock(statsMutex_);
     
-    int stageIndex = static_cast<int>(stage);
+    const size_t stageIndex = static_cast<size_t>(stage);
     auto& stat = stats_[stageIndex];
     
     // Update sample count
@@ -314,7 +315,9 @@ inline void LatencyTracker::updateStats(Stage stage, float latencyMs) {
     
     // Update average (running average)
     float currentAverage = stat.averageMs.load();
-    float newAverage = (currentAverage * currentCount + latencyMs) / (currentCount + 1);
+    float newAverage =
+        (currentAverage * static_cast<float>(currentCount) + latencyMs) /
+        static_cast<float>(currentCount + 1);
     stat.averageMs = newAverage;
     
     // Update peak

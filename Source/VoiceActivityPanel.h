@@ -61,7 +61,7 @@ public:
         auto titleBounds = bounds.removeFromTop(20);
         
         g.setColour(UIColors::SecondaryText);
-        g.setFont(juce::Font(12.0f, juce::Font::bold));
+        g.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
         g.drawText("Voice Activity", titleBounds, juce::Justification::centredLeft);
     }
     
@@ -108,4 +108,3 @@ private:
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VoiceActivityPanel)
 };
-

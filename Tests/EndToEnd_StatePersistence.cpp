@@ -47,7 +47,7 @@ protected:
         processor->getPluginController().setMode(mode);
         
         if (mode == PluginController::Mode::Sender) {
-            processor->getPluginController().setVoiceCount(voiceCount);
+            processor->setVoiceCount(voiceCount);
             processor->getPluginController().setBufferSize(bufferSize);
         } else {
             processor->getPluginController().setVoiceNumber(voiceNumber);
@@ -343,7 +343,7 @@ TEST_F(StatePersistenceTest, ConfigurationChangesPersistence) {
         PluginController::Mode::Sender, 4, 1, 5);
     
     // Change configuration multiple times
-    processor1->getPluginController().setVoiceCount(6);
+    processor1->setVoiceCount(6);
     processor1->getPluginController().setBufferSize(9);
     
     // Save state
@@ -474,7 +474,7 @@ TEST_F(StatePersistenceTest, CompleteDAWSessionWorkflow) {
         PluginController::Mode::Sender, 4, 1, 7);
     
     // 2. User adjusts settings
-    processor->getPluginController().setVoiceCount(6);
+    processor->setVoiceCount(6);
     processor->getPluginController().setBufferSize(8);
     
     // 3. DAW saves project (calls getStateInformation)

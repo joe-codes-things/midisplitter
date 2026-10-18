@@ -618,7 +618,7 @@ inline std::vector<VoiceAssignment> SenderPipeline::processBlockAndGetAssignment
                                     voiceTracker_->recordNoteOn(assignedEvent.note,
                                                                 assignedEvent.channel,
                                                                 static_cast<uint8_t>(assignment.voiceNumber),
-                                                                static_cast<uint64_t>(assignedEvent.timestamp));
+                                                                assignedEvent.timestamp);
                                 }
                             }
                         }
@@ -864,7 +864,7 @@ inline bool SenderPipeline::processNoteEvents(const std::vector<MIDIEvent>& even
                     voiceTracker_->recordNoteOn(assignedEvent.note,
                                                 assignedEvent.channel,
                                                 static_cast<uint8_t>(assignment.voiceNumber),
-                                                static_cast<uint64_t>(assignedEvent.timestamp));
+                                                assignedEvent.timestamp);
                 }
             }
         }
@@ -908,17 +908,35 @@ inline bool SenderPipeline::sendVoiceAssignments(const std::vector<VoiceAssignme
                     "Sending " + juce::String(assignments.size()) + " voice assignments, " +
                     juce::String(totalEvents) + " total events");
     
-    bool success = false;
-    
-    // Try socket-based VST3 IPC first (works across process boundaries)
-    if (pluginFormat_ == PluginController::PluginFormat::VST3 && ipcManagerVST3Socket_) {
+    std::vector<VoiceAssignment> localAssignments;
+    std::vector<VoiceAssignment> remoteAssignments;
+    for (const auto& assignment : assignments) {
+        if (InProcessMIDIBus::hasSubscriber(pluginFormat_, assignment.voiceNumber)) {
+            localAssignments.push_back(assignment);
+        } else {
+            remoteAssignments.push_back(assignment);
+        }
+    }
+
+    bool success = !localAssignments.empty() &&
+                   InProcessMIDIBus::publish(pluginFormat_, localAssignments);
+    if (!success) {
+        remoteAssignments.insert(remoteAssignments.end(),
+                                 localAssignments.begin(),
+                                 localAssignments.end());
+    }
+
+    bool remoteSuccess = false;
+    if (!remoteAssignments.empty() &&
+        pluginFormat_ == PluginController::PluginFormat::VST3 &&
+        ipcManagerVST3Socket_) {
         int connectionCount = static_cast<int>(ipcManagerVST3Socket_->getConnectionCount());
         logger.logEvent(IPCTraceLogger::EventType::Info, "Sender", "VST3", 0,
                         "VST3 socket connection count: " + juce::String(connectionCount));
         
-        success = ipcManagerVST3Socket_->sendVoiceData(assignments);
+        remoteSuccess = ipcManagerVST3Socket_->sendVoiceData(remoteAssignments);
         
-        if (success) {
+        if (remoteSuccess) {
             logger.logEvent(IPCTraceLogger::EventType::MessageSent, "Sender", "VST3", 0,
                             "VST3 socket send successful");
         } else {
@@ -927,28 +945,32 @@ inline bool SenderPipeline::sendVoiceAssignments(const std::vector<VoiceAssignme
         }
     }
     // Fallback to legacy VST3 IConnectionPoint (rarely works for inter-plugin)
-    else if (pluginFormat_ == PluginController::PluginFormat::VST3 && ipcManagerVST3_) {
+    else if (!remoteAssignments.empty() &&
+             pluginFormat_ == PluginController::PluginFormat::VST3 &&
+             ipcManagerVST3_) {
         int connectionCount = static_cast<int>(ipcManagerVST3_->getConnectionCount());
         logger.logEvent(IPCTraceLogger::EventType::Info, "Sender", "VST3", 0,
                         "VST3 legacy connection count: " + juce::String(connectionCount));
         
-        success = ipcManagerVST3_->sendVoiceData(assignments);
+        remoteSuccess = ipcManagerVST3_->sendVoiceData(remoteAssignments);
         
-        if (success) {
+        if (remoteSuccess) {
             logger.logEvent(IPCTraceLogger::EventType::MessageSent, "Sender", "VST3", 0,
                             "VST3 legacy send successful");
         } else {
             logger.logEvent(IPCTraceLogger::EventType::MessageDropped, "Sender", "VST3", 0,
                             "VST3 legacy send failed - falling back");
         }
-    } else if (pluginFormat_ == PluginController::PluginFormat::AU && ipcManagerAU_) {
+    } else if (!remoteAssignments.empty() &&
+               pluginFormat_ == PluginController::PluginFormat::AU &&
+               ipcManagerAU_) {
         bool isConnected = ipcManagerAU_->isConnected();
         logger.logEvent(IPCTraceLogger::EventType::Info, "Sender", "AU", 0,
                         "AU connected: " + juce::String(isConnected ? "yes" : "no"));
         
-        success = ipcManagerAU_->sendVoiceData(assignments);
+        remoteSuccess = ipcManagerAU_->sendVoiceData(remoteAssignments);
         
-        if (success) {
+        if (remoteSuccess) {
             logger.logEvent(IPCTraceLogger::EventType::MessageSent, "Sender", "AU", 0,
                             "AU message sent successfully");
         } else {
@@ -957,15 +979,9 @@ inline bool SenderPipeline::sendVoiceAssignments(const std::vector<VoiceAssignme
         }
     }
 
+    success = success || remoteSuccess;
     if (!success) {
-        success = InProcessMIDIBus::publish(pluginFormat_, assignments);
-        
-        if (success) {
-            logger.logEvent(IPCTraceLogger::EventType::MessageSent, "Sender", format, 0,
-                            "InProcessMIDIBus fallback successful");
-        } else {
-            logger.logError("Sender", format, "All IPC methods failed - message dropped");
-        }
+        logger.logError("Sender", format, "All IPC methods failed - message dropped");
     }
     
     if (success) {
@@ -1039,7 +1055,8 @@ inline void SenderPipeline::updateStatistics(const std::vector<MIDIEvent>& event
         for (float latency : latencyHistory_) {
             totalLatency += latency;
         }
-        stats_.averageLatencyMs = totalLatency / latencyHistory_.size();
+        stats_.averageLatencyMs =
+            totalLatency / static_cast<float>(latencyHistory_.size());
         
         // Update peak latency
         float currentPeak = stats_.peakLatencyMs;
@@ -1058,7 +1075,7 @@ inline void SenderPipeline::handleProcessingError(const juce::String& errorMessa
     stats_.processingErrors++;
     
     // Log error (could be expanded to use a logging system)
-    DBG("SenderPipeline Error: " << errorMessage);
+    juce::Logger::writeToLog("SenderPipeline Error: " + errorMessage);
 }
 
 inline float SenderPipeline::calculateLatency(std::chrono::steady_clock::time_point startTime) const {

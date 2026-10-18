@@ -1,7 +1,9 @@
 # Build directories
 build/
+builds/
 cmake-build-*/
 Build/
+/.windows-vm.local
 
 # IDE files
 .vscode/
@@ -39,10 +41,16 @@ exports/
 # Build count tracking
 .build_count
 
-# Internal documentation (exclude most, allow specific files)
+# Internal documentation (exclude most, allow selected project docs)
 docs/
+!docs/
+docs/*
+!docs/WINDOWS_BUILD.md
 !docs/BUGS.md
 !docs/FEATURE-IDEAS.md
+!docs/README.md
+!docs/PROJECT-ONBOARDING.md
+!docs/IMPLEMENTATION-STATUS.md
 
 # Kiro configuration
 .kiro/

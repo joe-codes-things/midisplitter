@@ -70,7 +70,7 @@ public:
         
         // Draw voice number
         g.setColour(isActive_ ? UIColors::DeepBackground : UIColors::SecondaryText);
-        g.setFont(juce::Font(10.0f, juce::Font::bold));
+        g.setFont(juce::Font(juce::FontOptions(10.0f, juce::Font::bold)));
         g.drawText(juce::String(voiceNumber_), ledBounds, juce::Justification::centred);
     }
 
@@ -81,4 +81,3 @@ private:
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VoiceActivityIndicator)
 };
-

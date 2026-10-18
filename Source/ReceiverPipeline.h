@@ -242,7 +242,6 @@ private:
      * @brief Update active note tracking
      * @param event MIDI event to process
      */
-    void updateActiveNotes(const MIDIEvent& event);
     
     /**
      * @brief Clean up stale active notes
@@ -256,7 +255,7 @@ private:
      * @param eventsOutput Events output
      * @param processingTimeMs Time taken to process
      */
-    void updateStatistics(int eventsReceived, int eventsOutput, float processingTimeMs);
+    void updateStatistics(float processingTimeMs);
     
     /**
      * @brief Handle processing error
@@ -418,23 +417,24 @@ inline bool ReceiverPipeline::processBlock(juce::MidiBuffer& outputBuffer, int n
         auto timedEvents = preserveTiming(reconstructedEvents);
         
         // Convert to JUCE MIDI buffer
-        outputBuffer = midiProcessor_->formatOutput(timedEvents, sampleRate);
-        
-        // Update active note tracking
-        for (const auto& evt : timedEvents) {
-            updateActiveNotes(evt);
+        const auto formattedOutput = midiProcessor_->formatOutput(timedEvents, sampleRate);
+        if (numSamples > 0) {
+            for (const auto metadata : formattedOutput) {
+                const int samplePosition = juce::jlimit(
+                    0, numSamples - 1, static_cast<int>(metadata.samplePosition));
+                outputBuffer.addEvent(metadata.getMessage(), samplePosition);
+            }
         }
         
         // Clean up stale notes
-        int64_t currentTime = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count();
+        const int64_t currentTime = static_cast<int64_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count());
         cleanupStaleNotes(currentTime);
         
         // Update statistics
         float processingTime = calculateLatency(startTime);
-        updateStatistics(static_cast<int>(eventsToProcess.size()), 
-                        static_cast<int>(timedEvents.size()), 
-                        processingTime);
+        updateStatistics(processingTime);
         
         stats_.eventsOutput += static_cast<int>(timedEvents.size());
         
@@ -574,7 +574,6 @@ inline void ReceiverPipeline::handleReceivedVoiceData(const std::vector<VoiceAss
 
 inline std::vector<MIDIEvent> ReceiverPipeline::filterEventsForVoice(const std::vector<MIDIEvent>& events) {
     std::vector<MIDIEvent> filteredEvents;
-    int targetVoice = voiceNumber_;
     
     for (const auto& event : events) {
         // For now, we assume all events are for this voice
@@ -603,6 +602,9 @@ inline std::vector<MIDIEvent> ReceiverPipeline::reconstructNotePairs(const std::
                 activeNote.channel = event.channel;
                 activeNote.voiceNumber = voiceNumber_;
                 activeNote.noteOnTimestamp = event.timestamp;
+                activeNote.trackingTimestamp = static_cast<int64_t>(
+                    std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch()).count());
                 
                 activeNotes_[noteKey] = activeNote;
                 reconstructedEvents.push_back(event);
@@ -658,16 +660,12 @@ inline std::vector<MIDIEvent> ReceiverPipeline::preserveTiming(const std::vector
     return timedEvents;
 }
 
-inline void ReceiverPipeline::updateActiveNotes(const MIDIEvent& event) {
-    // This is handled in reconstructNotePairs
-}
-
 inline void ReceiverPipeline::cleanupStaleNotes(int64_t currentTime) {
     std::lock_guard<std::mutex> lock(activeNotesMutex_);
     
     auto it = activeNotes_.begin();
     while (it != activeNotes_.end()) {
-        if (currentTime - it->second.noteOnTimestamp > STALE_NOTE_TIMEOUT_US) {
+        if (currentTime - it->second.trackingTimestamp > STALE_NOTE_TIMEOUT_US) {
             it = activeNotes_.erase(it);
         } else {
             ++it;
@@ -675,7 +673,7 @@ inline void ReceiverPipeline::cleanupStaleNotes(int64_t currentTime) {
     }
 }
 
-inline void ReceiverPipeline::updateStatistics(int eventsReceived, int eventsOutput, float processingTimeMs) {
+inline void ReceiverPipeline::updateStatistics(float processingTimeMs) {
     // Update latency statistics
     {
         std::lock_guard<std::mutex> lock(statsMutex_);
@@ -689,7 +687,8 @@ inline void ReceiverPipeline::updateStatistics(int eventsReceived, int eventsOut
         for (float latency : latencyHistory_) {
             totalLatency += latency;
         }
-        stats_.averageLatencyMs = totalLatency / latencyHistory_.size();
+        stats_.averageLatencyMs =
+            totalLatency / static_cast<float>(latencyHistory_.size());
         
         // Update peak latency
         float currentPeak = stats_.peakLatencyMs;
@@ -706,7 +705,7 @@ inline void ReceiverPipeline::updateStatistics(int eventsReceived, int eventsOut
 
 inline void ReceiverPipeline::handleProcessingError(const juce::String& errorMessage) {
     // Log error (could be expanded to use a logging system)
-    DBG("ReceiverPipeline Error: " << errorMessage);
+    juce::Logger::writeToLog("ReceiverPipeline Error: " + errorMessage);
 }
 
 inline float ReceiverPipeline::calculateLatency(std::chrono::steady_clock::time_point startTime) const {

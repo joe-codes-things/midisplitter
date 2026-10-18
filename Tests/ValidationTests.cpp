@@ -4,6 +4,10 @@
 #include <cstdlib>
 #include <string>
 #include <fstream>
+#if defined(_WIN32)
+#include <cstdio>
+#include <filesystem>
+#endif
 
 /**
  * @brief Automated validation tests for VST3 and AU plugin formats
@@ -18,7 +22,13 @@ protected:
         projectRoot_ = getProjectRoot();
         
         // Set up paths
-        buildDir_ = projectRoot_ + "/build";
+#if defined(_WIN32)
+        buildDir_ = (std::filesystem::path(projectRoot_).parent_path() / "build" / "Windows").string();
+#elif defined(__APPLE__)
+        buildDir_ = projectRoot_ + "/build/macOS";
+#else
+        buildDir_ = projectRoot_ + "/build/Linux";
+#endif
         scriptsDir_ = projectRoot_ + "/Scripts";
         
         // Plugin paths
@@ -35,6 +45,9 @@ protected:
      * @return Project root path
      */
     std::string getProjectRoot() {
+#if defined(MIDISPLITTER_PROJECT_ROOT)
+        return MIDISPLITTER_PROJECT_ROOT;
+#else
         // Try to find project root by looking for CMakeLists.txt
         std::string currentPath = juce::File::getCurrentWorkingDirectory().getFullPathName().toStdString();
         
@@ -49,6 +62,7 @@ protected:
         
         // Fallback to current directory
         return currentPath;
+#endif
     }
     
     /**
@@ -76,7 +90,11 @@ protected:
      * @return Exit code
      */
     int runCommand(const std::string& command, std::string& output) {
+#if defined(_WIN32)
+        FILE* pipe = _popen(command.c_str(), "r");
+#else
         FILE* pipe = popen(command.c_str(), "r");
+#endif
         if (!pipe) {
             return -1;
         }
@@ -88,8 +106,13 @@ protected:
             output += buffer;
         }
         
+#if defined(_WIN32)
+        int exitCode = _pclose(pipe);
+        return exitCode;
+#else
         int exitCode = pclose(pipe);
         return WEXITSTATUS(exitCode);
+#endif
     }
     
     /**
@@ -126,17 +149,21 @@ TEST_F(PluginValidationTest, VST3PluginStructure) {
     EXPECT_TRUE(directoryExists(contentsDir)) << "Contents directory should exist";
     
     // Check Info.plist
+#if defined(_WIN32)
+    std::vector<std::string> possibleBinaries = {
+        contentsDir + "/x86_64-win/MIDI Splitter.vst3"
+    };
+#else
     std::string infoPlist = contentsDir + "/Info.plist";
     EXPECT_TRUE(fileExists(infoPlist)) << "Info.plist should exist";
-    
-    // Check for binary (architecture-specific)
-    bool binaryFound = false;
     std::vector<std::string> possibleBinaries = {
         contentsDir + "/MacOS/MIDI Splitter",
         contentsDir + "/x86_64-mac/MIDI Splitter.so",
         contentsDir + "/arm64-mac/MIDI Splitter.so"
     };
-    
+#endif
+
+    bool binaryFound = false;
     for (const auto& binaryPath : possibleBinaries) {
         if (fileExists(binaryPath)) {
             binaryFound = true;
@@ -176,6 +203,10 @@ TEST_F(PluginValidationTest, AUPluginStructure) {
  * @brief Test VST3 validation script execution
  */
 TEST_F(PluginValidationTest, VST3ValidationScript) {
+#if defined(_WIN32)
+    GTEST_SKIP() << "VST3 shell validation scripts are only available on macOS and Linux";
+#endif
+
     // Check if validation script exists
     std::string scriptPath = scriptsDir_ + "/validate_vst3.sh";
     if (!fileExists(scriptPath)) {
@@ -189,7 +220,7 @@ TEST_F(PluginValidationTest, VST3ValidationScript) {
     
     // Run help only here so CTest verifies script availability without requiring
     // external validators or installing plugins into the user's Audio Units path.
-    std::string command = "cd " + projectRoot_ + " && " + scriptPath + " --help";
+    std::string command = "cd \"" + projectRoot_ + "\" && \"" + scriptPath + "\" --help";
     std::string output;
     int exitCode = runCommand(command, output);
     
@@ -220,7 +251,7 @@ TEST_F(PluginValidationTest, AUValidationScript) {
     
     // Run help only here so CTest verifies script availability without requiring
     // auval registration or installing plugins into the user's Audio Units path.
-    std::string command = "cd " + projectRoot_ + " && " + scriptPath + " --help";
+    std::string command = "cd \"" + projectRoot_ + "\" && \"" + scriptPath + "\" --help";
     std::string output;
     int exitCode = runCommand(command, output);
     
@@ -245,10 +276,13 @@ TEST_F(PluginValidationTest, PluginMetadataConsistency) {
     
     // Check VST3 metadata
     if (vst3Built) {
+#if defined(_WIN32)
+        std::string vst3Binary = vst3PluginPath_ + "/Contents/x86_64-win/MIDI Splitter.vst3";
+        EXPECT_TRUE(fileExists(vst3Binary)) << "Windows x64 VST3 binary should exist";
+#else
         std::string vst3InfoPlist = vst3PluginPath_ + "/Contents/Info.plist";
         EXPECT_TRUE(fileExists(vst3InfoPlist)) << "VST3 Info.plist should exist";
-        
-        // Could add more detailed plist parsing here
+#endif
     }
     
     // Check AU metadata
@@ -309,6 +343,10 @@ TEST_F(PluginValidationTest, EditorCanBeCreatedAndResized) {
  * @brief Test validation script permissions and executability
  */
 TEST_F(PluginValidationTest, ValidationScriptPermissions) {
+#if defined(_WIN32)
+    GTEST_SKIP() << "Shell script permission checks are only available on macOS and Linux";
+#endif
+
     std::vector<std::string> scripts = {
         scriptsDir_ + "/validate_vst3.sh",
         scriptsDir_ + "/validate_au.sh"
@@ -317,7 +355,7 @@ TEST_F(PluginValidationTest, ValidationScriptPermissions) {
     for (const auto& scriptPath : scripts) {
         if (fileExists(scriptPath)) {
             // Check if script is executable
-            std::string command = "test -x " + scriptPath;
+            std::string command = "test -x \"" + scriptPath + "\"";
             std::string output;
             int exitCode = runCommand(command, output);
             
@@ -340,17 +378,19 @@ TEST_F(PluginValidationTest, CompleteValidationWorkflow) {
     
     // Test VST3 workflow if available
     if (isPluginBuilt(vst3PluginPath_)) {
+#if !defined(_WIN32)
         std::string vst3Script = scriptsDir_ + "/validate_vst3.sh";
         if (fileExists(vst3Script)) {
             std::cout << "Running VST3 validation workflow..." << std::endl;
             
-            std::string command = "cd " + projectRoot_ + " && " + vst3Script + " --help";
+            std::string command = "cd \"" + projectRoot_ + "\" && \"" + vst3Script + "\" --help";
             std::string output;
             int exitCode = runCommand(command, output);
             
             // Help should work
             EXPECT_EQ(exitCode, 0) << "VST3 validation script help should work";
         }
+#endif
     }
     
     // Test AU workflow if available (macOS only)
@@ -360,7 +400,7 @@ TEST_F(PluginValidationTest, CompleteValidationWorkflow) {
         if (fileExists(auScript)) {
             std::cout << "Running AU validation workflow..." << std::endl;
             
-            std::string command = "cd " + projectRoot_ + " && " + auScript + " --help";
+            std::string command = "cd \"" + projectRoot_ + "\" && \"" + auScript + "\" --help";
             std::string output;
             int exitCode = runCommand(command, output);
             

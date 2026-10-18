@@ -2,9 +2,11 @@
 
 A professional MIDI instrument plugin that distributes polyphonic MIDI input across 16 MIDI channels, enabling advanced voice management and orchestration workflows in your DAW.
 
+MIDI Splitter is available for **macOS and Windows**: VST3 is supported on both platforms, and Audio Units (AU) are supported on macOS.
+
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
-[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)]()
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)]()
 
 ## Overview
 
@@ -23,16 +25,17 @@ MIDI Splitter is a MIDI processing plugin that intelligently distributes notes f
 - **Selective CC filtering** - User-controllable Modulation (CC1), Expression (CC11), and Volume (CC7) transmission
 - **State persistence** - Full DAW project save/restore support
 - **Low latency** - Minimal processing overhead
-- **Dual format support** - VST3 and Audio Units
+- **Cross-platform plugins** - VST3 on macOS and Windows; Audio Units on macOS
 
 ## Quick Start
 
 ### Installation
 
-1. Download the latest release for your platform
-2. Copy the plugin to your DAW's plugin folder:
+1. Download the installer or plugin build for your platform
+2. Install or copy the plugin to your DAW's plugin folder:
    - **macOS VST3:** `~/Library/Audio/Plug-Ins/VST3/`
    - **macOS AU:** `~/Library/Audio/Plug-Ins/Components/`
+   - **Windows x64 VST3:** `%CommonProgramFiles%\VST3\` (the Windows installer requests administrator access)
 3. Rescan plugins in your DAW
 4. Load MIDI Splitter as an instrument
 
@@ -128,48 +131,62 @@ The plugin features a clean, minimal design focused on core functionality with a
 
 ## Building from Source
 
-> **⚠️ CRITICAL:** The AU plugin MUST be built as `kAudioUnitType_MusicDevice` (Instrument type). Never change `AU_MAIN_TYPE` in CMakeLists.txt to `kAudioUnitType_MIDIProcessor` or any other type. This will break Logic Pro compatibility. See [BUILD_NOTES.md](BUILD_NOTES.md) for details.
+> **⚠️ CRITICAL:** The macOS AU plugin MUST be built as `kAudioUnitType_MusicDevice` (Instrument type). Never change `AU_MAIN_TYPE` in CMakeLists.txt to `kAudioUnitType_MIDIProcessor` or any other type. This will break Logic Pro compatibility. See [BUILD_NOTES.md](BUILD_NOTES.md) for details.
 
 ### Prerequisites
 
 - CMake 3.22 or higher
 - C++17 compatible compiler
   - macOS: Xcode 12+
+  - Windows: Visual Studio 2022 C++ Build Tools and the Windows SDK; the automated Windows build uses a configured Windows 11 VM over SSH
 - JUCE framework (included)
 
-### Build Steps
+See [Windows build and VM setup](docs/WINDOWS_BUILD.md) for the native Windows toolchain, local SSH configuration, and VM workspace details.
+
+### Build macOS plugins
 
 ```bash
-# Clone repository
-git clone https://github.com/joe-codes-things/midisplitter.git
-cd midisplitter
-
-# Create build directory
-mkdir build && cd build
-
-# Configure
-cmake ..
-
-# Build
-cmake --build . --config Release
-
-# Run tests
-ctest --output-on-failure
+./Scripts/build_macos.sh
 ```
 
-### Build Outputs
+This configures and tests in `build/macOS/`, then stages the plugins in `builds/macOS/`. macOS builds require CMake 3.22+, Xcode command-line tools, and the included JUCE checkout. No explicit minimum macOS deployment target is set in this project; the selected Apple toolchain and JUCE defaults apply.
 
-- **VST3:** `build/MIDISplitterPlugin_artefacts/Release/VST3/MIDI Splitter.vst3`
-- **AU:** `build/MIDISplitterPlugin_artefacts/Release/AU/MIDI Splitter.component`
-- **Tests:** `build/MIDISplitterPluginTests`
+### Build Windows plugins
+
+```bash
+./Scripts/build_windows.sh
+```
+
+The script checks SSH and VM build-tool readiness, transfers the current non-ignored project files, builds and tests with native MSVC on the Windows VM, and retrieves the x64 VST3 and unsigned installer. It does not install the plugin or run the installer.
+
+### Build both platforms
+
+```bash
+./Scripts/build_all.sh
+```
+
+The combined script checks Windows VM readiness first, builds and tests the macOS plugins, and then builds and packages the Windows x64 VST3.
+
+### Build outputs
+
+- **macOS VST3:** `builds/macOS/VST3/MIDI Splitter.vst3`
+- **macOS AU:** `builds/macOS/AU/MIDI Splitter.component`
+- **Windows x64 VST3:** `builds/Windows/VST3/MIDI Splitter.vst3`
+- **Windows x64 installer:** `builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
+- **Windows VM workspace:** `Coding Projects/MIDISplitterBuild` under the VM user's home directory
+- **Tests and generated build state:** `build/macOS/` locally and `build/Windows/` in the VM workspace
+
+macOS builds are ad-hoc signed only, not Developer ID signed or notarized. Windows plugin and installer are unsigned. The installer installs only the VST3 bundle to the standard shared Windows VST3 folder when a user runs it with administrator access. The project owner has confirmed that the Windows installation works. The automated build does not run the installer or a DAW, and no DAW/version compatibility matrix is claimed.
 
 ## Testing
 
 ### Run All Tests
 
 ```bash
-ctest --output-on-failure
+ctest --test-dir build/macOS --output-on-failure
 ```
+
+Use `./Scripts/build_windows.sh` to run the Windows test suite through the configured VM, or `./Scripts/build_all.sh` to build and test both platforms.
 
 ### Validation Scripts
 
@@ -184,10 +201,14 @@ ctest --output-on-failure
 ### Test Coverage
 
 - Property-based tests for Control Change broadcasting
-- End-to-end integration tests (VST3 & AU)
+- Sender MIDI output routing by voice channel
 - Sustained notes across buffers
 - State persistence (DAW save/restore)
 - Plugin validation (structure & metadata)
+
+The automated processor tests verify channel-routed MIDI output; they do not load a
+DAW or the Audio Unit wrapper. AU host compatibility must be validated separately
+with an AU-aware host or Apple's Audio Unit validation tools.
 
 ## Performance
 
@@ -212,14 +233,14 @@ Copyright (c) 2026 Nine Lives Audio
 
 ## Changelog
 
-### Version 0.0.15 (Current)
+### Version 0.0.17 (Current)
 
 - 16-voice support (full MIDI channel range)
 - Simplified UI with minimal interface
-- VST3 and AU support
+- macOS VST3 and AU support, plus Windows x64 VST3 support
 - Control Change broadcasting with selective CC filtering (Modulation CC1, Expression CC11, Volume CC7)
 - State persistence
-- Production tested and verified
+- Automated macOS and Windows test suites pass (79/79 tests on each platform)
 - Bug fixes for editor creation, hanging notes, and note timing
 
 ---

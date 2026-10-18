@@ -3,6 +3,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <limits>
 #include "MIDIEvent.h"
 
 /**
@@ -55,7 +56,8 @@ public:
      */
     void setTimestampTolerance(int toleranceUs)
     {
-        timestampToleranceUs_ = toleranceUs;
+        if (toleranceUs >= 0)
+            timestampToleranceUs_ = toleranceUs;
     }
     
     /**
@@ -91,10 +93,10 @@ public:
         if (!isBufferActive_ || events_.empty())
             return false;
             
-        uint64_t currentTime = getCurrentTimeMs();
-        uint64_t elapsedTime = currentTime - bufferStartTime_;
+        int64_t currentTime = getCurrentTimeMs();
+        int64_t elapsedTime = currentTime - bufferStartTime_;
         
-        return elapsedTime >= static_cast<uint64_t>(bufferSizeMs_);
+        return elapsedTime >= bufferSizeMs_;
     }
     
     /**
@@ -166,18 +168,19 @@ private:
     int bufferSizeMs_;                    // Buffer window size in milliseconds
     int timestampToleranceUs_;            // Timestamp tolerance for simultaneity
     std::vector<MIDIEvent> events_;       // Collected MIDI events
-    uint64_t bufferStartTime_;            // Buffer start time in milliseconds
+    int64_t bufferStartTime_;             // Buffer start time in milliseconds
     bool isBufferActive_;                 // Whether buffer is currently collecting
     
     /**
      * Get current time in milliseconds
      * @return Current time in milliseconds since epoch
      */
-    uint64_t getCurrentTimeMs() const
+    int64_t getCurrentTimeMs() const
     {
         auto now = std::chrono::steady_clock::now();
         auto duration = now.time_since_epoch();
-        return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        return static_cast<int64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
     }
     
     /**
@@ -191,17 +194,18 @@ private:
             
         // Convert tolerance from microseconds to timestamp units
         // Assuming timestamp is in microseconds
-        uint64_t tolerance = static_cast<uint64_t>(timestampToleranceUs_);
-        
         // Group events by finding clusters within tolerance
         for (size_t i = 1; i < events_.size(); ++i)
         {
-            uint64_t timeDiff = (events_[i].timestamp > events_[i-1].timestamp) 
-                              ? (events_[i].timestamp - events_[i-1].timestamp)
-                              : (events_[i-1].timestamp - events_[i].timestamp);
-                              
+            const int64_t earlierTimestamp = events_[i - 1].timestamp;
+            const int64_t laterTimestamp = events_[i].timestamp;
+            const int64_t tolerance = timestampToleranceUs_;
+            const bool withinTolerance =
+                earlierTimestamp > std::numeric_limits<int64_t>::max() - tolerance ||
+                laterTimestamp <= earlierTimestamp + tolerance;
+
             // If events are within tolerance, use the same timestamp
-            if (timeDiff <= tolerance)
+            if (withinTolerance)
             {
                 events_[i].timestamp = events_[i-1].timestamp;
             }

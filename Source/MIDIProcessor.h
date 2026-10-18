@@ -1,6 +1,9 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <vector>
 #include "MIDIEvent.h"
 #include "MIDIParser.h"
@@ -31,6 +34,8 @@ public:
     std::vector<MIDIEvent> processBlock(const juce::MidiBuffer& midiBuffer, double sampleRate)
     {
         std::vector<MIDIEvent> events;
+        if (!(sampleRate > 0.0) || !std::isfinite(sampleRate))
+            return events;
         
         // Parse all MIDI messages in the buffer
         for (const auto metadata : midiBuffer)
@@ -39,10 +44,20 @@ public:
             int samplePosition = metadata.samplePosition;
             
             // Convert sample position to timestamp (microseconds)
-            uint64_t timestamp = static_cast<uint64_t>((samplePosition / sampleRate) * 1000000.0);
+            const long double timestamp =
+                static_cast<long double>(samplePosition) * 1000000.0L / sampleRate;
+            const long double minTimestamp =
+                static_cast<long double>(std::numeric_limits<int64_t>::min());
+            const long double maxTimestamp =
+                static_cast<long double>(std::numeric_limits<int64_t>::max());
+            const int64_t safeTimestamp = timestamp <= minTimestamp
+                ? std::numeric_limits<int64_t>::min()
+                : timestamp >= maxTimestamp
+                    ? std::numeric_limits<int64_t>::max()
+                    : static_cast<int64_t>(timestamp);
             
             // Parse the MIDI message
-            auto parsedEvent = parseMidiMessage(message, timestamp);
+            auto parsedEvent = parseMidiMessage(message, safeTimestamp);
             if (parsedEvent.has_value())
             {
                 events.push_back(parsedEvent.value());
@@ -67,7 +82,7 @@ public:
             int samplePosition = metadata.samplePosition;
             
             // Use sample position as timestamp
-            uint64_t timestamp = static_cast<uint64_t>(samplePosition);
+            int64_t timestamp = samplePosition;
             
             auto parsedEvent = parseMidiMessage(message, timestamp);
             if (parsedEvent.has_value())
@@ -88,11 +103,18 @@ public:
     juce::MidiBuffer formatOutput(const std::vector<MIDIEvent>& events, double sampleRate)
     {
         juce::MidiBuffer outputBuffer;
+        if (!(sampleRate > 0.0) || !std::isfinite(sampleRate))
+            return outputBuffer;
         
         for (const auto& event : events)
         {
             // Convert timestamp to sample position
-            int samplePosition = static_cast<int>((event.timestamp / 1000000.0) * sampleRate);
+            const long double samplePositionValue =
+                static_cast<long double>(event.timestamp) * sampleRate / 1000000.0L;
+            const int samplePosition = static_cast<int>(std::clamp(
+                samplePositionValue,
+                0.0L,
+                static_cast<long double>(std::numeric_limits<int>::max())));
             
             // Create JUCE MidiMessage
             auto midiMessage = createMidiMessage(event);
@@ -117,7 +139,8 @@ public:
         for (const auto& event : events)
         {
             // Use timestamp directly as sample position
-            int samplePosition = static_cast<int>(event.timestamp);
+            const int samplePosition = static_cast<int>(std::clamp<int64_t>(
+                event.timestamp, 0, std::numeric_limits<int>::max()));
             
             auto midiMessage = createMidiMessage(event);
             if (midiMessage.has_value())
@@ -207,7 +230,7 @@ private:
      * @param timestamp Timestamp for the event
      * @return MIDIEvent if parsing successful, nullopt otherwise
      */
-    std::optional<MIDIEvent> parseMidiMessage(const juce::MidiMessage& message, uint64_t timestamp)
+    std::optional<MIDIEvent> parseMidiMessage(const juce::MidiMessage& message, int64_t timestamp)
     {
         // Convert JUCE message to raw bytes
         std::vector<uint8_t> bytes;

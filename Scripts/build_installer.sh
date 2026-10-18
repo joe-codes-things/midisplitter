@@ -7,10 +7,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_DIR/build"
-EXPORTS_DIR="$PROJECT_DIR/exports"
+BUILD_DIR="$PROJECT_DIR/build/macOS"
+ARTIFACTS_DIR="$PROJECT_DIR/builds/macOS"
+INSTALLER_OUTPUT_DIR="$ARTIFACTS_DIR/Installers"
 INSTALLER_DIR="$PROJECT_DIR/installer"
-WORK_DIR="$PROJECT_DIR/installer_work"  # scratch space, cleaned up after
+WORK_DIR="$BUILD_DIR/installer_work"  # scratch space, cleaned up after
 
 # ── Resolve version ──────────────────────────────────────────────────────────
 VERSION=$(grep "project(MIDISplitterPlugin VERSION" "$PROJECT_DIR/CMakeLists.txt" \
@@ -78,7 +79,7 @@ mkdir -p "$WORK_DIR/vst3_payload/$VST3_DEST_DIR"
 mkdir -p "$WORK_DIR/au_payload/$AU_DEST_DIR"
 mkdir -p "$WORK_DIR/guide_payload/tmp_guide"
 mkdir -p "$WORK_DIR/pkgs"
-mkdir -p "$EXPORTS_DIR"
+mkdir -p "$INSTALLER_OUTPUT_DIR"
 
 # ── Sign plugins (ad-hoc) ────────────────────────────────────────────────────
 echo "Signing plugins..."
@@ -166,7 +167,7 @@ echo ""
 # ── Build final product installer ────────────────────────────────────────────
 echo "Building final installer..."
 
-OUTPUT_PKG="$EXPORTS_DIR/${INSTALLER_NAME}.pkg"
+OUTPUT_PKG="$INSTALLER_OUTPUT_DIR/${INSTALLER_NAME}.pkg"
 
 productbuild \
     --distribution "$INSTALLER_DIR/distribution.xml" \

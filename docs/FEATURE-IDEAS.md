@@ -26,7 +26,7 @@ Per-Voice Transposition
 Transpose each voice independently (+/- 24 semitones)
 
 
-## Parameter Automation ✅ IMPLEMENTED (v0.17, feature/daw-automation)
+## Parameter Automation ✅ IMPLEMENTED (0.0.17)
 
 Full DAW automation support for key plugin parameters has been implemented.
 

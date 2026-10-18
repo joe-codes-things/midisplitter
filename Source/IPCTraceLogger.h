@@ -7,6 +7,7 @@
 #include <string>
 #include <atomic>
 #include <chrono>
+#include <ctime>
 
 /**
  * @brief File-based IPC trace logging system
@@ -142,6 +143,8 @@ private:
      * @brief Get timestamp string
      */
     juce::String getTimestamp() const;
+
+    static bool getLocalTime(std::time_t time, std::tm& localTime);
     
     /**
      * @brief Get event type string
@@ -180,6 +183,14 @@ inline IPCTraceLogger::~IPCTraceLogger() {
     shutdown();
 }
 
+inline bool IPCTraceLogger::getLocalTime(std::time_t time, std::tm& localTime) {
+#if defined(_WIN32)
+    return localtime_s(&localTime, &time) == 0;
+#else
+    return localtime_r(&time, &localTime) != nullptr;
+#endif
+}
+
 inline bool IPCTraceLogger::initialize(const juce::String& sessionId) {
     std::lock_guard<std::mutex> lock(logMutex_);
     
@@ -198,9 +209,14 @@ inline bool IPCTraceLogger::initialize(const juce::String& sessionId) {
     // Create log filename with timestamp and session ID
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm localTime{};
+    if (!getLocalTime(time, localTime)) {
+        juce::Logger::writeToLog("Failed to convert local time while initializing IPC logging.");
+        return false;
+    }
     std::stringstream filename;
     filename << "MIDI_Splitter_IPC_" << sessionId.toStdString() << "_" 
-             << std::put_time(std::localtime(&time), "%Y%m%d_%H%M%S") << ".log";
+             << std::put_time(&localTime, "%Y%m%d_%H%M%S") << ".log";
     
     logFilePath_ = logDir.getChildFile(juce::String(filename.str()));
     
@@ -320,8 +336,14 @@ inline juce::String IPCTraceLogger::getTimestamp() const {
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()) % 1000;
     
+    std::tm localTime{};
+    if (!getLocalTime(time, localTime)) {
+        juce::Logger::writeToLog("Failed to convert local time while formatting an IPC log timestamp.");
+        return {};
+    }
+
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&time), "%H:%M:%S");
+    ss << std::put_time(&localTime, "%H:%M:%S");
     ss << "." << std::setfill('0') << std::setw(3) << ms.count();
     
     return juce::String(ss.str());

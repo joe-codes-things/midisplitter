@@ -23,7 +23,7 @@ public:
      * @param timestamp Timestamp for the event (in samples or milliseconds)
      * @return MIDIEvent if parsing successful, nullopt if invalid
      */
-    static std::optional<MIDIEvent> parse(const std::vector<uint8_t>& bytes, uint64_t timestamp = 0)
+    static std::optional<MIDIEvent> parse(const std::vector<uint8_t>& bytes, int64_t timestamp = 0)
     {
         if (bytes.empty())
             return std::nullopt;

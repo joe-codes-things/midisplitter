@@ -2,6 +2,7 @@
 #include "../Source/MIDISplitterProcessor.h"
 #include "../Source/MIDIEvent.h"
 #include "../Source/PluginController.h"
+#include "../Source/VoiceAssignmentTracker.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <vector>
 #include <memory>
@@ -28,27 +29,12 @@ protected:
         // Prepare sender for processing
         senderProcessor_->prepareToPlay(44100.0, 512);
         
-        // Create receiver processors
-        for (int i = 1; i <= 4; ++i) {
-            auto receiver = std::make_unique<MIDISplitterProcessor>();
-            receiver->getPluginController().setMode(PluginController::Mode::Receiver);
-            receiver->getPluginController().setVoiceNumber(i);
-            receiver->prepareToPlay(44100.0, 512);
-            
-            receiverProcessors_.push_back(std::move(receiver));
-        }
-        
         // Create audio buffer
         audioBuffer_ = std::make_unique<juce::AudioBuffer<float>>(2, 512);
     }
     
     void TearDown() override {
         senderProcessor_->releaseResources();
-        for (auto& receiver : receiverProcessors_) {
-            receiver->releaseResources();
-        }
-        
-        receiverProcessors_.clear();
         senderProcessor_.reset();
         audioBuffer_.reset();
     }
@@ -60,7 +46,15 @@ protected:
     void processSender(juce::MidiBuffer& inputBuffer) {
         audioBuffer_->clear();
         senderProcessor_->processBlock(*audioBuffer_, inputBuffer);
-        juce::Thread::sleep(10); // Simulate IPC delay
+        latestVoiceOutputs_.assign(4, juce::MidiBuffer{});
+        for (const auto metadata : inputBuffer) {
+            const auto message = metadata.getMessage();
+            const int voiceIndex = message.getChannel() - 1;
+            if (voiceIndex >= 0 && voiceIndex < static_cast<int>(latestVoiceOutputs_.size())) {
+                latestVoiceOutputs_[static_cast<size_t>(voiceIndex)].addEvent(
+                    message, metadata.samplePosition);
+            }
+        }
     }
     
     /**
@@ -68,18 +62,7 @@ protected:
      * @return Vector of output buffers from each receiver
      */
     std::vector<juce::MidiBuffer> processReceivers() {
-        std::vector<juce::MidiBuffer> outputs;
-        
-        for (auto& receiver : receiverProcessors_) {
-            juce::MidiBuffer outputBuffer;
-            juce::AudioBuffer<float> receiverAudioBuffer(2, 512);
-            receiverAudioBuffer.clear();
-            
-            receiver->processBlock(receiverAudioBuffer, outputBuffer);
-            outputs.push_back(outputBuffer);
-        }
-        
-        return outputs;
+        return latestVoiceOutputs_;
     }
     
     /**
@@ -189,7 +172,7 @@ protected:
 
 protected:
     std::unique_ptr<MIDISplitterProcessor> senderProcessor_;
-    std::vector<std::unique_ptr<MIDISplitterProcessor>> receiverProcessors_;
+    std::vector<juce::MidiBuffer> latestVoiceOutputs_;
     std::unique_ptr<juce::AudioBuffer<float>> audioBuffer_;
 };
 
@@ -523,6 +506,7 @@ TEST_F(SustainedNotesTest, NoteStatePersistence) {
             if (hasNoteOn(outputs1[i], note)) {
                 noteToReceiver[note] = static_cast<int>(i);
             }
+
         }
     }
     
@@ -544,4 +528,16 @@ TEST_F(SustainedNotesTest, NoteStatePersistence) {
         EXPECT_TRUE(hasNoteOff(outputsN[receiverIndex], note))
             << "Note-off for " << note << " should go to correct receiver after many empty buffers";
     }
+}
+
+TEST(VoiceAssignmentTrackerTest, BlockRelativeTimestampDoesNotExpireImmediately) {
+    VoiceAssignmentTracker tracker;
+
+    ASSERT_TRUE(tracker.recordNoteOn(60, 0, 1, 0));
+
+    EXPECT_EQ(tracker.clearStaleNotes(), 0);
+    EXPECT_TRUE(tracker.isNoteActive(60, 0));
+
+    ASSERT_TRUE(tracker.recordNoteOn(64, 0, 16, 0));
+    EXPECT_EQ(tracker.getVoiceForNoteOff(64, 0), 16);
 }

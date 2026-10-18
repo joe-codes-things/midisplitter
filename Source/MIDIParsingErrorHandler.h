@@ -35,7 +35,7 @@ public:
      * @param timestamp Timestamp for the event
      * @return MIDIEvent if parsing successful, nullopt if invalid
      */
-    std::optional<MIDIEvent> parseWithValidation(const std::vector<uint8_t>& bytes, uint64_t timestamp = 0)
+    std::optional<MIDIEvent> parseWithValidation(const std::vector<uint8_t>& bytes, int64_t timestamp = 0)
     {
         // Attempt to parse
         auto result = MIDIParser::parse(bytes, timestamp);
@@ -64,8 +64,8 @@ public:
     void logParseError(const std::string& message, const std::vector<uint8_t>& bytes)
     {
         // Check rate limit
-        uint64_t currentTime = getCurrentTimeMs();
-        uint64_t timeSinceReset = currentTime - lastResetTime_;
+        const int64_t currentTime = getCurrentTimeMs();
+        const int64_t timeSinceReset = currentTime - lastResetTime_;
         
         // Reset counter every second
         if (timeSinceReset >= 1000)
@@ -134,7 +134,7 @@ public:
      */
     int getCurrentErrorRate() const
     {
-        uint64_t timeSinceReset = getCurrentTimeMs() - lastResetTime_;
+        const int64_t timeSinceReset = getCurrentTimeMs() - lastResetTime_;
         if (timeSinceReset == 0)
             return 0;
             
@@ -163,7 +163,7 @@ public:
 private:
     int maxErrorsPerSecond_;
     std::atomic<int> errorCount_;
-    uint64_t lastResetTime_;
+    int64_t lastResetTime_;
     std::atomic<int> totalErrorCount_;
     
     std::function<void(const std::string&)> errorCallback_;
@@ -174,7 +174,7 @@ private:
      * @param timestamp Event timestamp
      * @return Recovered MIDIEvent if possible, nullopt otherwise
      */
-    std::optional<MIDIEvent> attemptRecovery(const std::vector<uint8_t>& bytes, uint64_t timestamp)
+    std::optional<MIDIEvent> attemptRecovery(const std::vector<uint8_t>& bytes, int64_t timestamp)
     {
         if (bytes.empty())
             return std::nullopt;
@@ -191,7 +191,8 @@ private:
             if (messageType == 0x80 || messageType == 0x90 || messageType == 0xB0)
             {
                 // Try to parse from this position
-                std::vector<uint8_t> recoveredBytes(bytes.begin() + i, bytes.end());
+                std::vector<uint8_t> recoveredBytes(
+                    bytes.begin() + static_cast<std::ptrdiff_t>(i), bytes.end());
                 auto result = MIDIParser::parse(recoveredBytes, timestamp);
                 
                 if (result.has_value())
@@ -237,7 +238,8 @@ private:
                 if (bytes.size() > expectedLength)
                 {
                     // Truncate
-                    fixedBytes.assign(bytes.begin(), bytes.begin() + expectedLength);
+                    fixedBytes.assign(bytes.begin(),
+                                      bytes.begin() + static_cast<std::ptrdiff_t>(expectedLength));
                 }
                 else
                 {
@@ -291,10 +293,11 @@ private:
      * Get current time in milliseconds
      * @return Current time in milliseconds
      */
-    uint64_t getCurrentTimeMs() const
+    int64_t getCurrentTimeMs() const
     {
         auto now = std::chrono::steady_clock::now();
         auto duration = now.time_since_epoch();
-        return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        return static_cast<int64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
     }
 };

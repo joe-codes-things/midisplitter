@@ -45,23 +45,9 @@ public:
             std::lock_guard<std::mutex> lock(getMutex());
 
             for (const auto& assignment : assignments) {
-                bool hasExactDelivery = false;
-
                 for (const auto& subscriber : getSubscribers()) {
                     if (subscriber.format == format && subscriber.voiceNumber == assignment.voiceNumber && subscriber.callback) {
                         deliveries.push_back({ subscriber.callback, assignment.notes, static_cast<uint8_t>(assignment.voiceNumber) });
-                        hasExactDelivery = true;
-                    }
-                }
-
-                if (!hasExactDelivery && !assignment.notes.empty()) {
-                    auto fallback = std::find_if(getSubscribers().begin(), getSubscribers().end(),
-                                                 [format](const Subscriber& subscriber) {
-                                                     return subscriber.format == format && subscriber.callback;
-                                                 });
-
-                    if (fallback != getSubscribers().end()) {
-                        deliveries.push_back({ fallback->callback, assignment.notes, fallback->voiceNumber });
                     }
                 }
             }
@@ -72,6 +58,16 @@ public:
         }
 
         return !deliveries.empty();
+    }
+
+    static bool hasSubscriber(PluginController::PluginFormat format, int voiceNumber) {
+        std::lock_guard<std::mutex> lock(getMutex());
+        return std::any_of(getSubscribers().begin(), getSubscribers().end(),
+                           [format, voiceNumber](const Subscriber& subscriber) {
+                               return subscriber.format == format &&
+                                      subscriber.voiceNumber == voiceNumber &&
+                                      static_cast<bool>(subscriber.callback);
+                           });
     }
 
 private:

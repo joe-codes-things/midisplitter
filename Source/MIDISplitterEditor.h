@@ -17,7 +17,7 @@
  */
 class MIDISplitterEditor : public juce::AudioProcessorEditor, private juce::Timer {
 public:
-    explicit MIDISplitterEditor(MIDISplitterProcessor& processor);
+    explicit MIDISplitterEditor(MIDISplitterProcessor& splitterProcessor);
     ~MIDISplitterEditor() override;
 
     void paint(juce::Graphics& g) override;
@@ -43,12 +43,14 @@ private:
 
             float outerR = r, innerR = r * 0.55f;
             int teeth = 8;
+            const float toothCount = static_cast<float>(teeth);
             juce::Path gear;
             for (int i = 0; i < teeth; ++i) {
-                float a0 = juce::MathConstants<float>::twoPi * i / teeth;
-                float a1 = a0 + juce::MathConstants<float>::twoPi / teeth * 0.4f;
-                float a2 = a0 + juce::MathConstants<float>::twoPi / teeth * 0.6f;
-                float a3 = a0 + juce::MathConstants<float>::twoPi / teeth;
+                const float toothIndex = static_cast<float>(i);
+                float a0 = juce::MathConstants<float>::twoPi * toothIndex / toothCount;
+                float a1 = a0 + juce::MathConstants<float>::twoPi / toothCount * 0.4f;
+                float a2 = a0 + juce::MathConstants<float>::twoPi / toothCount * 0.6f;
+                float a3 = a0 + juce::MathConstants<float>::twoPi / toothCount;
                 auto pt = [&](float angle, float rad) {
                     return juce::Point<float>(cx + rad * std::cos(angle),
                                               cy + rad * std::sin(angle));
@@ -100,7 +102,7 @@ private:
 
         void paint(juce::Graphics& g) override {
             g.setColour(isHovered_ ? hoverColor_ : normalColor_);
-            g.setFont(juce::Font(fontSize_, juce::Font::plain));
+            g.setFont(juce::Font(juce::FontOptions(fontSize_, juce::Font::plain)));
             g.drawText(text_, getLocalBounds(), justification_, true);
         }
 
@@ -149,12 +151,12 @@ private:
             
             // Title "Plugin Info" - bold, no hover
             g.setColour(UIColors::SecondaryText);
-            g.setFont(juce::Font(14.0f, juce::Font::bold));
+            g.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
             g.drawText("Plugin Info", 12, 10, getWidth() - 24, 20, 
                       juce::Justification::centredLeft, true);
             
             // Menu items with hover effect (indented - 3 spaces worth)
-            g.setFont(juce::Font(14.0f, juce::Font::plain));
+            g.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::plain)));
             
             // "About MIDI Splitter"
             g.setColour(aboutHovered_ ? UIColors::SecondaryText : UIColors::DimText);
@@ -269,13 +271,13 @@ private:
             
             // Title
             g.setColour(UIColors::PrimaryText);
-            g.setFont(juce::Font(16.0f, juce::Font::bold));
+            g.setFont(juce::Font(juce::FontOptions(16.0f, juce::Font::bold)));
             g.drawText("About MIDI Splitter", 20, titleY, getWidth() - 40, titleH,
                       juce::Justification::centred, true);
             
             // Info lines
             g.setColour(UIColors::SecondaryText);
-            g.setFont(juce::Font(14.0f, juce::Font::plain));
+            g.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::plain)));
             g.drawText(line1_, 20, infoY,                    getWidth() - 40, infoLineH, juce::Justification::centred, true);
             g.drawText(line2_, 20, infoY + infoLineH,        getWidth() - 40, infoLineH, juce::Justification::centred, true);
             g.drawText(line3_, 20, infoY + infoLineH * 2,    getWidth() - 40, infoLineH, juce::Justification::centred, true);
@@ -284,7 +286,7 @@ private:
         void mouseMove(const juce::MouseEvent& e) override {
             float xSize = 20.0f;
             float xPadding = 8.0f;
-            juce::Rectangle<float> xBounds(getWidth() - xSize - xPadding, 
+            juce::Rectangle<float> xBounds(static_cast<float>(getWidth()) - xSize - xPadding,
                                           xPadding, xSize, xSize);
             bool wasHovered = xHovered_;
             xHovered_ = xBounds.contains(e.position);
@@ -298,7 +300,7 @@ private:
         void mouseDown(const juce::MouseEvent& e) override {
             float xSize = 20.0f;
             float xPadding = 8.0f;
-            juce::Rectangle<float> xBounds(getWidth() - xSize - xPadding, 
+            juce::Rectangle<float> xBounds(static_cast<float>(getWidth()) - xSize - xPadding,
                                           xPadding, xSize, xSize);
             if (xBounds.contains(e.position)) {
                 if (onCloseClicked) onCloseClicked();
@@ -339,7 +341,7 @@ private:
             
             // Text - vertically centered, 14pt font to match gear popup
             g.setColour(UIColors::SecondaryText);
-            g.setFont(juce::Font(14.0f, juce::Font::plain));
+            g.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::plain)));
             
             // Calculate vertical centering for 2 lines of text
             int lineHeight = 18;
@@ -407,8 +409,8 @@ private:
 
 // ─── Implementation ───────────────────────────────────────────────────────────
 
-inline MIDISplitterEditor::MIDISplitterEditor(MIDISplitterProcessor& processor)
-    : AudioProcessorEditor(&processor), processor_(processor)
+inline MIDISplitterEditor::MIDISplitterEditor(MIDISplitterProcessor& splitterProcessor)
+    : AudioProcessorEditor(&splitterProcessor), processor_(splitterProcessor)
 {
     initializeComponents();
     setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -497,7 +499,7 @@ inline void MIDISplitterEditor::initializeComponents()
 {
     // ── Title ─────────────────────────────────────────────────────────────
     titleLabel_ = std::make_unique<juce::Label>("Title", "MIDI Splitter");
-    titleLabel_->setFont(juce::Font(20.0f, juce::Font::bold));
+    titleLabel_->setFont(juce::Font(juce::FontOptions(20.0f, juce::Font::bold)));
     titleLabel_->setJustificationType(juce::Justification::centred);
     titleLabel_->setColour(juce::Label::textColourId, UIColors::PrimaryText);
     addAndMakeVisible(*titleLabel_);
@@ -552,7 +554,7 @@ inline void MIDISplitterEditor::initializeComponents()
 
     // ── Voice count label (editable) ──────────────────────────────────────
     voiceCountLabel_ = std::make_unique<juce::Label>("VoiceCount", "4");
-    voiceCountLabel_->setFont(juce::Font(17.0f, juce::Font::plain));
+    voiceCountLabel_->setFont(juce::Font(juce::FontOptions(17.0f, juce::Font::plain)));
     voiceCountLabel_->setJustificationType(juce::Justification::centred);
     voiceCountLabel_->setColour(juce::Label::textColourId,            UIColors::PrimaryText);
     voiceCountLabel_->setColour(juce::Label::backgroundColourId,      juce::Colours::transparentBlack);
@@ -568,7 +570,7 @@ inline void MIDISplitterEditor::initializeComponents()
             ed->setBorder(juce::BorderSize<int>(0));
             ed->setIndents(0, 0);
             ed->setJustification(juce::Justification::centred);
-            ed->setFont(juce::Font(17.0f, juce::Font::plain));
+            ed->setFont(juce::Font(juce::FontOptions(17.0f, juce::Font::plain)));
             ed->moveCaretToEnd();
             ed->setHighlightedRegion({ed->getTotalNumChars(), ed->getTotalNumChars()});
         }
@@ -577,7 +579,7 @@ inline void MIDISplitterEditor::initializeComponents()
 
     // ── Voices label ──────────────────────────────────────────────────────
     voicesLabel_ = std::make_unique<juce::Label>("VoicesLabel", "Voices");
-    voicesLabel_->setFont(juce::Font(17.0f, juce::Font::plain));
+    voicesLabel_->setFont(juce::Font(juce::FontOptions(17.0f, juce::Font::plain)));
     voicesLabel_->setJustificationType(juce::Justification::centred);
     voicesLabel_->setColour(juce::Label::textColourId, UIColors::SecondaryText);
     addAndMakeVisible(*voicesLabel_);
@@ -602,7 +604,7 @@ inline void MIDISplitterEditor::initializeComponents()
     // ── Separate labels for each checkbox ────────────────────────────────
     auto makeCheckboxLabel = [this](const juce::String& text) {
         auto lbl = std::make_unique<juce::Label>("", text);
-        lbl->setFont(juce::Font(17.0f, juce::Font::plain));
+        lbl->setFont(juce::Font(juce::FontOptions(17.0f, juce::Font::plain)));
         lbl->setJustificationType(juce::Justification::centred);
         lbl->setColour(juce::Label::textColourId, UIColors::SecondaryText);
         addAndMakeVisible(*lbl);
@@ -652,7 +654,7 @@ inline void MIDISplitterEditor::handleVoiceCountChange(int newCount) {
     }
     
     // Also update plugin controller for immediate UI feedback
-    processor_.getPluginController().setVoiceCount(newCount);
+    processor_.setVoiceCount(newCount);
 }
 
 inline void MIDISplitterEditor::handleModFilterChange(bool enabled) {

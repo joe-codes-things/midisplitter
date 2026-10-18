@@ -351,9 +351,11 @@ inline std::vector<VoiceAssignment> IPCManagerVST3_Socket::decodeVoiceData(const
     juce::MemoryInputStream stream(data, false);
     
     // Read number of assignments
-    int count = stream.readInt();
+    const int count = stream.readInt();
+    if (count < 0)
+        return assignments;
     
-    for (uint32_t i = 0; i < count && !stream.isExhausted(); ++i)
+    for (int i = 0; i < count && !stream.isExhausted(); ++i)
     {
         VoiceAssignment assignment(0);
         
@@ -361,10 +363,12 @@ inline std::vector<VoiceAssignment> IPCManagerVST3_Socket::decodeVoiceData(const
         assignment.voiceNumber = stream.readInt();
         
         // Read number of events
-        int eventCount = stream.readInt();
+        const int eventCount = stream.readInt();
+        if (eventCount < 0)
+            return {};
         
         // Read each event
-        for (uint32_t j = 0; j < eventCount && !stream.isExhausted(); ++j)
+        for (int j = 0; j < eventCount && !stream.isExhausted(); ++j)
         {
             MIDIEvent event;
             event.timestamp = stream.readInt64();

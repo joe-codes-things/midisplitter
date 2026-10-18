@@ -28,7 +28,7 @@ public:
     /**
      * Destructor
      */
-    virtual ~IPCManagerAU();
+    ~IPCManagerAU() override;
     
     // InterprocessConnection interface implementation
     void connectionMade() override;
@@ -142,15 +142,6 @@ private:
      * @return true if encoding successful
      */
     bool encodeMessage(const VoiceAssignment& assignment, juce::MemoryBlock& message);
-    
-    /**
-     * Decode message into voice data
-     * @param message Input memory block
-     * @param events Output vector for MIDI events
-     * @param voiceNumber Output voice number
-     * @return true if decoding successful
-     */
-    bool decodeMessage(const juce::MemoryBlock& message, std::vector<MIDIEvent>& events, uint8_t& voiceNumber);
     
     /**
      * Send message with header
@@ -314,10 +305,14 @@ inline bool IPCManagerAU::sendVoiceData(const std::vector<VoiceAssignment>& assi
     // Send each voice assignment as a separate message
     for (const auto& assignment : assignments)
     {
+        if (assignment.voiceNumber < 1 || assignment.voiceNumber > 16)
+            return false;
+
         juce::MemoryBlock messageData;
         if (encodeMessage(assignment, messageData))
         {
-            if (sendMessage(MessageType::VoiceData, assignment.voiceNumber, messageData))
+            if (sendMessage(MessageType::VoiceData,
+                            static_cast<uint8_t>(assignment.voiceNumber), messageData))
             {
                 sentAny = true;
             }
@@ -388,11 +383,6 @@ inline bool IPCManagerAU::encodeMessage(const VoiceAssignment& assignment, juce:
     return serializeEvents(assignment.notes, message);
 }
 
-inline bool IPCManagerAU::decodeMessage(const juce::MemoryBlock& message, std::vector<MIDIEvent>& events, uint8_t& voiceNumber)
-{
-    return deserializeEvents(message, events);
-}
-
 inline bool IPCManagerAU::sendMessage(MessageType type, uint8_t voiceNumber, const juce::MemoryBlock& data)
 {
     if (!connected_)
@@ -449,7 +439,7 @@ inline void IPCManagerAU::handleControlChangeMessage(const MessageHeader& header
     }
 }
 
-inline void IPCManagerAU::handleHeartbeatMessage(const MessageHeader& header)
+inline void IPCManagerAU::handleHeartbeatMessage(const MessageHeader&)
 {
     // Heartbeat received - connection is alive
     // Could implement connection health monitoring here

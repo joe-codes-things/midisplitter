@@ -1,6 +1,8 @@
 #pragma once
 
 #include <pluginterfaces/vst/ivstmessage.h>
+#include <atomic>
+#include <limits>
 #include <vector>
 #include <memory>
 #include <functional>
@@ -38,7 +40,7 @@ public:
     tresult PLUGIN_API notify(IMessage* message) override;
     
     // IUnknown interface implementation
-    tresult PLUGIN_API queryInterface(const TUID iid, void** obj) override;
+    tresult PLUGIN_API queryInterface(const TUID interfaceId, void** obj) override;
     uint32 PLUGIN_API addRef() override;
     uint32 PLUGIN_API release() override;
     
@@ -86,7 +88,7 @@ public:
     
 private:
     // Reference counting
-    int32 refCount_;
+    std::atomic<uint32> refCount_;
     
     // Connection management
     std::vector<IPtr<IConnectionPoint>> connections_;
@@ -242,22 +244,22 @@ inline tresult PLUGIN_API IPCManagerVST3::notify(IMessage* message)
     return kResultOk;
 }
 
-inline tresult PLUGIN_API IPCManagerVST3::queryInterface(const TUID iid, void** obj)
+inline tresult PLUGIN_API IPCManagerVST3::queryInterface(const TUID interfaceId, void** obj)
 {
-    QUERY_INTERFACE(iid, obj, IConnectionPoint::iid, IConnectionPoint)
-    QUERY_INTERFACE(iid, obj, FUnknown::iid, IConnectionPoint)
+    QUERY_INTERFACE(interfaceId, obj, IConnectionPoint::iid, IConnectionPoint)
+    QUERY_INTERFACE(interfaceId, obj, FUnknown::iid, IConnectionPoint)
     *obj = nullptr;
     return kNoInterface;
 }
 
 inline uint32 PLUGIN_API IPCManagerVST3::addRef()
 {
-    return ++refCount_;
+    return refCount_.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
 inline uint32 PLUGIN_API IPCManagerVST3::release()
 {
-    uint32 count = --refCount_;
+    uint32 count = refCount_.fetch_sub(1, std::memory_order_acq_rel) - 1;
     if (count == 0)
         delete this;
     return count;
@@ -359,6 +361,9 @@ inline bool IPCManagerVST3::decodeMessage(IMessage* message, std::vector<MIDIEve
     if (attributes->getInt("voiceNumber", voiceNum) != kResultOk)
         return false;
         
+    if (voiceNum < 0 || voiceNum > std::numeric_limits<uint8_t>::max())
+        return false;
+
     voiceNumber = static_cast<uint8_t>(voiceNum);
     
     // Get event data
@@ -374,7 +379,7 @@ inline bool IPCManagerVST3::decodeMessage(IMessage* message, std::vector<MIDIEve
     return deserializeEvents(eventData, events);
 }
 
-inline IPtr<IMessage> IPCManagerVST3::createMessage(const char* messageId)
+inline IPtr<IMessage> IPCManagerVST3::createMessage(const char*)
 {
     // This would typically be provided by the VST3 host
     // For now, return nullptr - actual implementation would need host context

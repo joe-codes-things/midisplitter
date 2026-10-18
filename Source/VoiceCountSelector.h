@@ -138,7 +138,7 @@ inline VoiceCountSelector::VoiceCountSelector(bool useSlider)
     
     // Create label
     label_ = std::make_unique<juce::Label>("VoiceCountLabel", "Voices:");
-    label_->setFont(juce::Font(14.0f, juce::Font::bold));
+    label_->setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
     label_->setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(*label_);
     
@@ -172,7 +172,7 @@ inline VoiceCountSelector::VoiceCountSelector(bool useSlider)
     // Create value label
     if (showVoiceCountText_) {
         valueLabel_ = std::make_unique<juce::Label>("VoiceCountValue", "");
-        valueLabel_->setFont(juce::Font(12.0f));
+        valueLabel_->setFont(juce::Font(juce::FontOptions(12.0f)));
         valueLabel_->setJustificationType(juce::Justification::centred);
         valueLabel_->setColour(juce::Label::textColourId, juce::Colours::darkgrey);
         valueLabel_->setVisible(false); // Hide the label
@@ -262,7 +262,7 @@ inline void VoiceCountSelector::setShowVoiceCountText(bool showText) {
     
     if (showText && !valueLabel_) {
         valueLabel_ = std::make_unique<juce::Label>("VoiceCountValue", "");
-        valueLabel_->setFont(juce::Font(12.0f));
+        valueLabel_->setFont(juce::Font(juce::FontOptions(12.0f)));
         valueLabel_->setJustificationType(juce::Justification::centred);
         valueLabel_->setColour(juce::Label::textColourId, juce::Colours::darkgrey);
         valueLabel_->setVisible(false); // Hide the label

@@ -12,8 +12,9 @@
 struct ActiveNote {
     uint8_t note;               ///< MIDI note number (0-127)
     uint8_t channel;            ///< MIDI channel (0-15)
-    int voiceNumber;            ///< Assigned voice (1-8)
+    int voiceNumber;            ///< Assigned voice (1-16)
     int64_t noteOnTimestamp;    ///< When note-on was received (microseconds)
+    int64_t trackingTimestamp;  ///< Monotonic time used for stale-note cleanup (microseconds)
     
     /**
      * @brief Default constructor
@@ -22,7 +23,8 @@ struct ActiveNote {
         : note(0)
         , channel(0)
         , voiceNumber(1)
-        , noteOnTimestamp(0) {}
+        , noteOnTimestamp(0)
+        , trackingTimestamp(0) {}
     
     /**
      * @brief Constructor with all parameters
@@ -31,11 +33,12 @@ struct ActiveNote {
      * @param voiceNumber Assigned voice number
      * @param timestamp Note-on timestamp
      */
-    ActiveNote(uint8_t note, uint8_t channel, int voiceNumber, int64_t timestamp)
-        : note(note)
-        , channel(channel)
-        , voiceNumber(voiceNumber)
-        , noteOnTimestamp(timestamp) {}
+    ActiveNote(uint8_t noteNumber, uint8_t midiChannel, int assignedVoiceNumber, int64_t timestamp)
+        : note(noteNumber)
+        , channel(midiChannel)
+        , voiceNumber(assignedVoiceNumber)
+        , noteOnTimestamp(timestamp)
+        , trackingTimestamp(0) {}
     
     /**
      * @brief Check if this active note matches the given note and channel

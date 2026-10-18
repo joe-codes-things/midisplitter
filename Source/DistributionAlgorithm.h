@@ -33,11 +33,11 @@ public:
         
         // Initialize voice assignments
         std::vector<VoiceAssignment> assignments;
-        assignments.reserve(voiceCount);
+        assignments.reserve(static_cast<size_t>(voiceCount));
         
-        for (int i = 0; i < voiceCount; ++i)
+        for (size_t i = 0; i < static_cast<size_t>(voiceCount); ++i)
         {
-            assignments.emplace_back(i + 1);  // Voice numbers are 1-based
+            assignments.emplace_back(static_cast<int>(i + 1));  // Voice numbers are 1-based
         }
         
         // Handle empty input
@@ -119,19 +119,20 @@ public:
         if (voiceCount <= 0)
             return {};
             
-        std::vector<int> pattern(voiceCount, 0);
+        const size_t voiceCountSize = static_cast<size_t>(voiceCount);
+        std::vector<int> pattern(voiceCountSize, 0);
         
         int baseNotes = calculateNotesPerVoice(totalNotes, voiceCount);
         int extraNotes = calculateExtraNotes(totalNotes, voiceCount);
         
         // Assign base notes to all voices
-        for (int i = 0; i < voiceCount; ++i)
+        for (size_t i = 0; i < voiceCountSize; ++i)
         {
             pattern[i] = baseNotes;
         }
         
         // Assign extra notes using round-robin
-        for (int i = 0; i < extraNotes; ++i)
+        for (size_t i = 0; i < static_cast<size_t>(extraNotes); ++i)
         {
             pattern[i]++;
         }
@@ -148,26 +149,26 @@ private:
     static void distributeNoteEvents(const std::vector<MIDIEvent>& noteEvents, 
                                    std::vector<VoiceAssignment>& assignments)
     {
-        int totalNotes = static_cast<int>(noteEvents.size());
-        int voiceCount = static_cast<int>(assignments.size());
+        const size_t totalNotes = noteEvents.size();
+        const size_t voiceCount = assignments.size();
         
-        int baseNotes = calculateNotesPerVoice(totalNotes, voiceCount);
-        int extraNotes = calculateExtraNotes(totalNotes, voiceCount);
+        const size_t baseNotes = totalNotes / voiceCount;
+        const size_t extraNotes = totalNotes % voiceCount;
         
         // Assign notes using round-robin with ratio-based distribution
-        int eventIndex = 0;
+        size_t eventIndex = 0;
         
-        for (int voice = 0; voice < voiceCount && eventIndex < totalNotes; ++voice)
+        for (size_t voice = 0; voice < voiceCount && eventIndex < totalNotes; ++voice)
         {
             // Calculate how many notes this voice gets
-            int notesForThisVoice = baseNotes;
+            size_t notesForThisVoice = baseNotes;
             if (voice < extraNotes)
             {
                 notesForThisVoice++;  // This voice gets an extra note
             }
             
             // Assign notes to this voice
-            for (int note = 0; note < notesForThisVoice && eventIndex < totalNotes; ++note)
+            for (size_t note = 0; note < notesForThisVoice && eventIndex < totalNotes; ++note)
             {
                 assignments[voice].notes.push_back(noteEvents[eventIndex]);
                 eventIndex++;
@@ -188,8 +189,11 @@ private:
         if (extraEvents.empty() || assignments.empty())
             return;
             
-        int voiceCount = static_cast<int>(assignments.size());
-        int currentVoice = startVoice % voiceCount;
+        const size_t voiceCount = assignments.size();
+        const size_t currentVoiceStart = static_cast<size_t>(
+            ((startVoice % static_cast<int>(voiceCount)) + static_cast<int>(voiceCount)) %
+            static_cast<int>(voiceCount));
+        size_t currentVoice = currentVoiceStart;
         
         for (const auto& event : extraEvents)
         {

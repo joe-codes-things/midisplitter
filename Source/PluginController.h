@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <limits>
 #include <memory>
 #include <atomic>
 #include "PluginState.h"
@@ -478,13 +479,18 @@ inline bool PluginController::restoreState(const void* data, int sizeInBytes)
         // Validate version (support v1, v2, v3)
         if (version < 1 || version > 3)
             return false;
+
+        if (voiceCount < 0 || voiceCount > std::numeric_limits<uint8_t>::max() ||
+            voiceNumber < 0 || voiceNumber > std::numeric_limits<uint8_t>::max() ||
+            bufferSize < 0 || bufferSize > std::numeric_limits<uint8_t>::max())
+            return false;
             
         // Create and validate state
         PluginState state;
         state.mode = static_cast<PluginState::Mode>(mode);
-        state.voiceCount = voiceCount;
-        state.voiceNumber = voiceNumber;
-        state.bufferSizeMs = bufferSize;
+        state.voiceCount = static_cast<uint8_t>(voiceCount);
+        state.voiceNumber = static_cast<uint8_t>(voiceNumber);
+        state.bufferSizeMs = static_cast<uint8_t>(bufferSize);
         state.modEnabled = modEnabled;
         state.expEnabled = expEnabled;
         state.volEnabled = volEnabled;

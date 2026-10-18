@@ -256,7 +256,8 @@ public:
         if (lastErrorTime_ == 0)
             return 0;
             
-        return getCurrentTimeMs() - lastErrorTime_;
+        const int64_t timeSinceError = getCurrentTimeMs() - lastErrorTime_;
+        return timeSinceError > 0 ? static_cast<uint64_t>(timeSinceError) : 0;
     }
     
     /**
@@ -289,7 +290,7 @@ private:
     int retryDelayMs_;
     std::atomic<int> currentRetryAttempt_;
     std::atomic<ConnectionStatus> connectionStatus_;
-    uint64_t lastErrorTime_;
+    int64_t lastErrorTime_;
     std::atomic<int> errorCount_;
     
     std::function<bool()> reconnectCallback_;
@@ -299,10 +300,11 @@ private:
      * Get current time in milliseconds
      * @return Current time in milliseconds
      */
-    uint64_t getCurrentTimeMs() const
+    int64_t getCurrentTimeMs() const
     {
         auto now = std::chrono::steady_clock::now();
         auto duration = now.time_since_epoch();
-        return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        return static_cast<int64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
     }
 };
