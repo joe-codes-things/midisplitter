@@ -49,8 +49,8 @@ docs/*
 !docs/PROJECT-ONBOARDING.md
 !docs/IMPLEMENTATION-STATUS.md
 
-# Kiro configuration
-.kiro/
+# Local workspace instructions
+.github/instructions/
 
 # Test projects
 *.logicx/
