@@ -51,9 +51,9 @@ VST3 uses different categorization and is configured correctly as:
 ### Cross-platform build scripts
 
 ```bash
-./Scripts/build_macos.sh   # build/test macOS VST3 and AU
-./Scripts/build_windows.sh # build/test Windows x64 VST3 and installer via the configured VM
-./Scripts/build_all.sh     # check Windows VM readiness, then build both platforms
+./scripts/build_macos.sh   # build/test macOS VST3 and AU
+./scripts/build_windows.sh # build/test Windows x64 VST3 and installer via the configured VM
+./scripts/build_all.sh     # check Windows VM readiness, then build both platforms
 ```
 
 All production plugin and installer artifacts are staged under `exports/production-builds/macOS/` or `exports/production-builds/Windows/`. CMake state, test products, and temporary build work stay in the separate `build/macOS/` tree (and `build/Windows/` inside the VM workspace). Windows VM connection settings belong in the Git-ignored `.windows-vm.local`; see [docs/WINDOWS_BUILD.md](docs/WINDOWS_BUILD.md). Never put a private SSH key in the repository or transfer archive.
@@ -65,21 +65,21 @@ The Windows installer installs the VST3 bundle to the standard shared VST3 folde
 ### For Manual/Interactive Use:
 ```bash
 # macOS plugins and tests
-./Scripts/build_macos.sh
+./scripts/build_macos.sh
 
 # macOS installer package (after the macOS build)
-./Scripts/build_installer.sh
+./scripts/build_installer.sh
 
 # macOS DMG with uninstaller
-./Scripts/build_dmg.sh
+./scripts/build_dmg.sh
 ```
 
 ### For Automation/AI Tool Use:
 ```bash
 # The platform scripts already report concise, actionable build output.
-./Scripts/build_all.sh
-./Scripts/build_installer.sh
-./Scripts/build_dmg.sh
+./scripts/build_all.sh
+./scripts/build_installer.sh
+./scripts/build_dmg.sh
 ```
 
 ## Build System Safeguards (Added v0.0.17 - Oct 2026)
@@ -91,7 +91,7 @@ The Windows installer installs the VST3 bundle to the standard shared VST3 folde
 2. `build_installer.sh` - Rejects binaries >6MB before packaging
 3. `build_dmg.sh` - Rejects packages >6MB before DMG creation
 
-The macOS installer and DMG scripts reject unexpectedly large Release artifacts (over 6 MB) as a safeguard against accidentally packaging a Debug build. Build macOS plugins with `./Scripts/build_macos.sh` before creating distribution packages.
+The macOS installer and DMG scripts reject unexpectedly large Release artifacts (over 6 MB) as a safeguard against accidentally packaging a Debug build. Build macOS plugins with `./scripts/build_macos.sh` before creating distribution packages.
 
 ---
 
@@ -99,4 +99,4 @@ The macOS installer and DMG scripts reject unexpectedly large Release artifacts 
 
 The project version is defined by `project(MIDISplitterPlugin VERSION ...)` in `CMakeLists.txt`. JUCE plugin metadata, the plugin UI, and the Windows installer use this same three-component version (for example, `0.0.17`).
 
-Platform build scripts run `Scripts/generate_version.sh` before building so the UI's displayed version and build number are refreshed from the project version. The combined build refreshes once so macOS and Windows artifacts share the same build number.
+Platform build scripts run `scripts/generate_version.sh` before building so the UI's displayed version and build number are refreshed from the project version. The combined build refreshes once so macOS and Windows artifacts share the same build number.

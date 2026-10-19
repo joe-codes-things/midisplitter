@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include "../Source/MIDISplitterProcessor.h"
-#include "../Source/PluginController.h"
-#include "../Source/PluginConfiguration.h"
+#include "../source/MIDISplitterProcessor.h"
+#include "../source/PluginController.h"
+#include "../source/PluginConfiguration.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
 

@@ -1,4 +1,4 @@
-#include "../Source/IPCMessage.h"
+#include "../source/IPCMessage.h"
 #include <gtest/gtest.h>
 
 /**

@@ -153,7 +153,7 @@ try {
     New-Item -ItemType Directory -Path \$source -Force | Out-Null
     & (Join-Path \$env:SystemRoot 'System32\\robocopy.exe') \$incoming \$source /MIR /NFL /NDL /NJH /NJS /NP
     if (\$LASTEXITCODE -ge 8) { throw \"Source synchronization failed with robocopy exit code \$LASTEXITCODE.\" }
-    \$buildScript = Join-Path \$source 'Scripts\\build_windows.ps1'
+    \$buildScript = Join-Path \$source 'scripts\\build_windows.ps1'
     if (-not (Test-Path -LiteralPath \$buildScript)) { throw \"Transferred Windows build script is missing: \$buildScript\" }
     & \$buildScript -RunId '$RUN_ID'
     if (\$LASTEXITCODE -and \$LASTEXITCODE -ne 0) { throw \"Windows build script failed with exit code \$LASTEXITCODE.\" }

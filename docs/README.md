@@ -23,4 +23,4 @@ This directory contains selected project documentation for MIDI Splitter. The pl
 
 Internal research notes and reference material are kept locally and are not part of the selected published documentation.
 
-Active plugin implementation lives in `Source/`, with tests in `Tests/`.
+Active plugin implementation lives in `source/`, with tests in `tests/`.

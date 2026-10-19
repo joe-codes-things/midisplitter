@@ -42,7 +42,7 @@ Quick script for development - signs and installs plugins to system directories.
 Validation scripts to test plugins using system tools (auval, pluginval).
 
 ### `generate_version.sh`
-Generates `Source/BuildVersion.h` from the version in `CMakeLists.txt` and increments the local build number. Platform build scripts run it automatically; the combined build runs it once for both platforms.
+Generates `source/BuildVersion.h` from the version in `CMakeLists.txt` and increments the local build number. Platform build scripts run it automatically; the combined build runs it once for both platforms.
 
 ### `goto-*.sh`
 Convenience scripts to navigate to build directories.
@@ -51,13 +51,13 @@ Convenience scripts to navigate to build directories.
 
 ```bash
 # Build both plugin platforms:
-./Scripts/build_all.sh
+./scripts/build_all.sh
 
 # Build macOS distribution packages:
-./Scripts/build_installer.sh
-./Scripts/build_dmg.sh
+./scripts/build_installer.sh
+./scripts/build_dmg.sh
 
 # Or build a single platform:
-./Scripts/build_macos.sh
-./Scripts/build_windows.sh
+./scripts/build_macos.sh
+./scripts/build_windows.sh
 ```

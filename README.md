@@ -161,7 +161,7 @@ See [Windows build and VM setup](docs/WINDOWS_BUILD.md) for the native Windows t
 ### Build macOS plugins
 
 ```bash
-./Scripts/build_macos.sh
+./scripts/build_macos.sh
 ```
 
 This configures and tests in `build/macOS/`, then stages the plugins in `exports/production-builds/macOS/`. macOS builds require CMake 3.22+, Xcode command-line tools, and the included JUCE checkout. No explicit minimum macOS deployment target is set in this project; the selected Apple toolchain and JUCE defaults apply.
@@ -169,7 +169,7 @@ This configures and tests in `build/macOS/`, then stages the plugins in `exports
 ### Build Windows plugins
 
 ```bash
-./Scripts/build_windows.sh
+./scripts/build_windows.sh
 ```
 
 The script checks SSH and VM build-tool readiness, transfers the current non-ignored project files, builds and tests with native MSVC on the Windows VM, and retrieves the x64 VST3 and unsigned installer. It does not install the plugin or run the installer.
@@ -177,7 +177,7 @@ The script checks SSH and VM build-tool readiness, transfers the current non-ign
 ### Build both platforms
 
 ```bash
-./Scripts/build_all.sh
+./scripts/build_all.sh
 ```
 
 The combined script checks Windows VM readiness first, builds and tests the macOS plugins, and then builds and packages the Windows x64 VST3.
@@ -201,16 +201,16 @@ macOS builds are ad-hoc signed only, not Developer ID signed or notarized. Windo
 ctest --test-dir build/macOS --output-on-failure
 ```
 
-Use `./Scripts/build_windows.sh` to run the Windows test suite through the configured VM, or `./Scripts/build_all.sh` to build and test both platforms.
+Use `./scripts/build_windows.sh` to run the Windows test suite through the configured VM, or `./scripts/build_all.sh` to build and test both platforms.
 
 ### Validation Scripts
 
 ```bash
 # Validate VST3 plugin
-./Scripts/validate_vst3.sh
+./scripts/validate_vst3.sh
 
 # Validate AU plugin (macOS only)
-./Scripts/validate_au.sh
+./scripts/validate_au.sh
 ```
 
 ### Test Coverage

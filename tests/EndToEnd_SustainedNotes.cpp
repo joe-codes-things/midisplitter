@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "../Source/MIDISplitterProcessor.h"
-#include "../Source/MIDIEvent.h"
-#include "../Source/PluginController.h"
-#include "../Source/VoiceAssignmentTracker.h"
+#include "../source/MIDISplitterProcessor.h"
+#include "../source/MIDIEvent.h"
+#include "../source/PluginController.h"
+#include "../source/VoiceAssignmentTracker.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <vector>
 #include <memory>

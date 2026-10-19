@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../Source/MIDIEvent.h"
+#include "../source/MIDIEvent.h"
 
 /**
  * @brief Test fixture for MIDIEvent tests

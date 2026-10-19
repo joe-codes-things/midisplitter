@@ -87,37 +87,37 @@ juce_add_plugin(MIDISplitterPlugin
 # Add source files
 target_sources(MIDISplitterPlugin
     PRIVATE
-        Source/PluginEntry.cpp
-        Source/MIDISplitterProcessor.h
-        Source/MIDISplitterEditor.h
-        Source/MIDIEvent.h
-        Source/VoiceAssignment.h
-        Source/PluginState.h
-        Source/ActiveNote.h
-        Source/IPCMessage.h
-        Source/MIDIParser.h
-        Source/BufferManager.h
-        Source/PitchSorter.h
-        Source/DistributionAlgorithm.h
-        Source/VoiceAssignmentTracker.h
-        Source/MIDIProcessor.h
-        Source/IPCManagerVST3.h
-        Source/IPCManagerAU.h
-        Source/LockFreeQueue.h
-        Source/PluginController.h
-        Source/PluginConfiguration.h
-        Source/IPCErrorHandler.h
-        Source/MIDIParsingErrorHandler.h
-        Source/BufferOverflowHandler.h
-        Source/ConfigurationValidator.h
-        Source/SenderPipeline.h
-        Source/ReceiverPipeline.h
-        Source/VoiceCountSelector.h
-        Source/LatencyTracker.h
-        Source/IPCTraceLogger.h
-        Source/VST3DiscoveryManager.h
-        Source/IPCManagerVST3_Socket.h
-        Source/CCFilterCheckbox.h
+        source/PluginEntry.cpp
+        source/MIDISplitterProcessor.h
+        source/MIDISplitterEditor.h
+        source/MIDIEvent.h
+        source/VoiceAssignment.h
+        source/PluginState.h
+        source/ActiveNote.h
+        source/IPCMessage.h
+        source/MIDIParser.h
+        source/BufferManager.h
+        source/PitchSorter.h
+        source/DistributionAlgorithm.h
+        source/VoiceAssignmentTracker.h
+        source/MIDIProcessor.h
+        source/IPCManagerVST3.h
+        source/IPCManagerAU.h
+        source/LockFreeQueue.h
+        source/PluginController.h
+        source/PluginConfiguration.h
+        source/IPCErrorHandler.h
+        source/MIDIParsingErrorHandler.h
+        source/BufferOverflowHandler.h
+        source/ConfigurationValidator.h
+        source/SenderPipeline.h
+        source/ReceiverPipeline.h
+        source/VoiceCountSelector.h
+        source/LatencyTracker.h
+        source/IPCTraceLogger.h
+        source/VST3DiscoveryManager.h
+        source/IPCManagerVST3_Socket.h
+        source/CCFilterCheckbox.h
 )
 
 set(VST3_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/modules/juce_audio_processors/format_types/VST3_SDK")
@@ -171,14 +171,14 @@ FetchContent_MakeAvailable(googletest)
 
 # Create test executable
 set(PLUGIN_TEST_SOURCES
-    Tests/test_main.cpp
-    Tests/test_MIDIEvent.cpp
-    Tests/test_IPCMessage.cpp
-    Tests/PropertyTest_ControlChangeBroadcasting.cpp
-    Tests/ValidationTests.cpp
-    Tests/EndToEnd_SenderToReceiver_VST3.cpp
-    Tests/EndToEnd_SustainedNotes.cpp
-    Tests/EndToEnd_StatePersistence.cpp
+    tests/test_main.cpp
+    tests/test_MIDIEvent.cpp
+    tests/test_IPCMessage.cpp
+    tests/PropertyTest_ControlChangeBroadcasting.cpp
+    tests/ValidationTests.cpp
+    tests/EndToEnd_SenderToReceiver_VST3.cpp
+    tests/EndToEnd_SustainedNotes.cpp
+    tests/EndToEnd_StatePersistence.cpp
     "${VST3_SDK_DIR}/pluginterfaces/base/coreiids.cpp"
     "${VST3_SDK_DIR}/public.sdk/source/vst/vstinitiids.cpp"
 )

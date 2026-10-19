@@ -36,7 +36,7 @@ echo ""
 if [ ! -f "$PKG_PATH" ]; then
     echo -e "${RED}Error: Installer pkg not found at:${NC}"
     echo "  $PKG_PATH"
-    echo "Run ./Scripts/build_installer.sh first."
+    echo "Run ./scripts/build_installer.sh first."
     exit 1
 fi
 
@@ -45,8 +45,8 @@ PKG_SIZE=$(stat -f%z "$PKG_PATH" 2>/dev/null || stat -c%s "$PKG_PATH" 2>/dev/nul
 if [ "$PKG_SIZE" -gt 6000000 ]; then
     echo -e "${YELLOW}Warning: Installer pkg is unusually large ($(numfmt --to=iec $PKG_SIZE 2>/dev/null || echo ${PKG_SIZE} bytes))${NC}"
     echo "This suggests a Debug build was packaged. Expected size: ~2-3MB"
-    echo "Please rebuild plugins with: ./Scripts/build.sh"
-    echo "Then run: ./Scripts/build_installer.sh"
+    echo "Please rebuild plugins with: ./scripts/build.sh"
+    echo "Then run: ./scripts/build_installer.sh"
     exit 1
 fi
 

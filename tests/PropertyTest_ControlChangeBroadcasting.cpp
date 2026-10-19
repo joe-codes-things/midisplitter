@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include "../Source/SenderPipeline.h"
-#include "../Source/ReceiverPipeline.h"
-#include "../Source/MIDIEvent.h"
-#include "../Source/PluginConfiguration.h"
-#include "../Source/PluginController.h"
+#include "../source/SenderPipeline.h"
+#include "../source/ReceiverPipeline.h"
+#include "../source/MIDIEvent.h"
+#include "../source/PluginConfiguration.h"
+#include "../source/PluginController.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <vector>
 #include <random>

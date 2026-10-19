@@ -43,7 +43,7 @@ echo ""
 if [ ! -d "$VST3_SRC" ]; then
     echo -e "${RED}Error: VST3 plugin not found at:${NC}"
     echo "  $VST3_SRC"
-    echo "Run ./Scripts/build.sh first."
+    echo "Run ./scripts/build.sh first."
     exit 1
 fi
 
@@ -54,7 +54,7 @@ if [ -f "$VST3_BINARY" ]; then
     if [ "$VST3_SIZE" -gt 6000000 ]; then
         echo -e "${YELLOW}Warning: VST3 binary is unusually large ($(numfmt --to=iec $VST3_SIZE || echo ${VST3_SIZE} bytes))${NC}"
         echo "This suggests a Debug build. Expected size: ~3-4MB"
-        echo "Please rebuild with: ./Scripts/build.sh (ensures Release mode)"
+        echo "Please rebuild with: ./scripts/build.sh (ensures Release mode)"
         exit 1
     fi
 fi

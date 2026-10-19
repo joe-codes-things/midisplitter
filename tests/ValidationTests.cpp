@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "../Source/MIDISplitterProcessor.h"
+#include "../source/MIDISplitterProcessor.h"
 #include <cstdlib>
 #include <string>
 #include <fstream>

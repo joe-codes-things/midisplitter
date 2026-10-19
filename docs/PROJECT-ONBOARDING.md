@@ -12,7 +12,7 @@ voice.
 
 The plugin's CMake project version is the source of truth for JUCE plugin
 metadata, the version shown in the UI, and the Windows installer. Build scripts
-regenerate `Source/BuildVersion.h` from that version.
+regenerate `source/BuildVersion.h` from that version.
 
 ## Build and test
 
@@ -21,13 +21,13 @@ Requirements and local Windows VM/SSH setup are described in
 
 ```bash
 # macOS VST3, AU, and tests
-./Scripts/build_macos.sh
+./scripts/build_macos.sh
 
 # Windows x64 VST3, tests, and installer through the configured VM
-./Scripts/build_windows.sh
+./scripts/build_windows.sh
 
 # Readiness check, then build and test both platforms
-./Scripts/build_all.sh
+./scripts/build_all.sh
 ```
 
 The macOS build requires CMake 3.22+, Xcode command-line tools, and the
@@ -52,9 +52,9 @@ automated tests do not validate a DAW host or AU wrapper.
 
 ## Source layout
 
-- `Source/`: MIDI processing, plugin processor/editor, UI, IPC, and state handling.
-- `Tests/`: CTest-registered processor and support-code tests.
-- `Scripts/`: platform build, packaging, validation, and utility scripts.
+- `source/`: MIDI processing, plugin processor/editor, UI, IPC, and state handling.
+- `tests/`: CTest-registered processor and support-code tests.
+- `scripts/`: platform build, packaging, validation, and utility scripts.
 - `installer/`: macOS and Windows installer definitions.
 - `JUCE/`: vendored JUCE framework.
 - `docs/`: maintained build, onboarding, status, bug, and feature documentation.

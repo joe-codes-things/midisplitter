@@ -22,13 +22,13 @@ Alternatively, set `WINDOWS_SSH_TARGET` and `WINDOWS_SSH_KEY` in the environment
 Check connectivity and required VM tools without transferring the source:
 
 ```bash
-./Scripts/build_windows.sh --check-only
+./scripts/build_windows.sh --check-only
 ```
 
 ## Build
 
 ```bash
-./Scripts/build_windows.sh
+./scripts/build_windows.sh
 ```
 
 The script sends only tracked and non-ignored project files, builds on Windows with the Visual Studio 2022 generator (`-A x64`, ARM64-hosted tools), runs the project tests, verifies that the VST3 binary is an AMD64 Windows PE, and compiles the installer. It stages files in a unique, per-run home-relative transfer directory, retrieves that exact directory, and removes the temporary files on success or failure. Cleanup failures are reported.
@@ -36,7 +36,7 @@ The script sends only tracked and non-ignored project files, builds on Windows w
 Build both supported plugin platforms with:
 
 ```bash
-./Scripts/build_all.sh
+./scripts/build_all.sh
 ```
 
 This checks VM SSH access and native build prerequisites before building macOS VST3/AU and Windows x64 VST3.
