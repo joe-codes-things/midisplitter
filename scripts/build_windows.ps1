@@ -1,15 +1,29 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^[0-9a-f]{32}$')]
-    [string] $RunId
+    [string] $RunId,
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^MIDISplitterBuild(?:-[a-z0-9-]+)?$')]
+    [string] $WorkspaceName,
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[a-z0-9_.-]+$')]
+    [string] $PluginName,
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[a-z0-9-]+$')]
+    [string] $BranchSlug,
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('production-builds', 'development-builds')]
+    [string] $ExportCategory,
+    [Parameter(Mandatory = $true)]
+    [bool] $DevelopmentBuild
 )
 
 $ErrorActionPreference = 'Stop'
-$ProjectWorkspace = Join-Path $env:USERPROFILE 'Coding Projects\MIDISplitterBuild'
+$ProjectWorkspace = Join-Path (Join-Path $env:USERPROFILE 'Coding Projects') $WorkspaceName
 $WorkspaceMarker = Join-Path $ProjectWorkspace '.midisplitter-build-workspace'
 $SourceDirectory = Join-Path $ProjectWorkspace 'source'
 $BuildDirectory = Join-Path $ProjectWorkspace 'build\Windows'
-$ArtifactsDirectory = Join-Path $ProjectWorkspace 'exports\production-builds\Windows'
+$ArtifactsDirectory = Join-Path (Join-Path $ProjectWorkspace 'exports') (Join-Path $ExportCategory 'Windows')
 $StagingDirectory = Join-Path $env:USERPROFILE "midisplitter-artifacts-$RunId"
 $Succeeded = $false
 
@@ -140,6 +154,7 @@ try {
         '@echo off'
         "call `"$devCommand`" -no_logo -arch=x64 -host_arch=arm64"
         'if errorlevel 1 exit /b %errorlevel%'
+        "set `"MIDI_SPLITTER_GIT_BRANCH=$BranchSlug`""
         "`"$cmake`" -S `"$SourceDirectory`" -B `"$BuildDirectory`" -G `"Visual Studio 17 2022`" -A x64 -T `"host=ARM64`" `"-DCMAKE_GENERATOR_INSTANCE=$vsInstallation`" -DCMAKE_BUILD_TYPE=Release -DJUCE_BUILD_EXAMPLES=OFF -DJUCE_BUILD_EXTRAS=OFF"
         'exit /b %errorlevel%'
     )
@@ -163,8 +178,8 @@ try {
     }
     $projectVersion = $versionMatch.Groups[1].Value
 
-    $pluginSource = Join-Path $BuildDirectory 'MIDISplitterPlugin_artefacts\Release\VST3\MIDI Splitter.vst3'
-    $pluginBinary = Join-Path $pluginSource 'Contents\x86_64-win\MIDI Splitter.vst3'
+    $pluginSource = Join-Path $BuildDirectory "MIDISplitterPlugin_artefacts\Release\VST3\$PluginName.vst3"
+    $pluginBinary = Join-Path $pluginSource "Contents\x86_64-win\$PluginName.vst3"
     if (-not (Test-Path -LiteralPath $pluginBinary)) {
         throw "The expected x64 Windows VST3 binary was not built: $pluginBinary"
     }
@@ -191,7 +206,7 @@ try {
         $stream.Dispose()
     }
 
-    $stagedPlugin = Join-Path $ArtifactsDirectory 'VST3\MIDI Splitter.vst3'
+    $stagedPlugin = Join-Path $ArtifactsDirectory "VST3\$PluginName.vst3"
     if (Test-Path -LiteralPath $stagedPlugin) {
         Remove-Item -LiteralPath $stagedPlugin -Recurse -Force
     }
@@ -202,26 +217,32 @@ try {
     $installerDirectory = Join-Path $ArtifactsDirectory 'Installers'
     New-Item -ItemType Directory -Path $installerDirectory -Force | Out-Null
     $installerCompiler = Get-InnoSetupCompiler
-    Invoke-NativeCommand $installerCompiler `
-        "/DAppVersion=$projectVersion" `
-        "/DPluginSource=$stagedPlugin" `
-        "/O$installerDirectory" `
-        "/FMIDISplitter_v${projectVersion}_Windows_x64_Setup" `
+    $installerBaseName = if ($DevelopmentBuild) { "MIDISplitter_${BranchSlug}" } else { 'MIDISplitter' }
+    $installerName = "${installerBaseName}_v${projectVersion}_Windows_x64_Setup.exe"
+    $installerCompilerArguments = @(
+        "/DAppVersion=$projectVersion"
+        "/DPluginSource=$stagedPlugin"
+        "/DPluginName=$PluginName"
+        "/DInstallerBaseName=$installerBaseName"
+        "/DDevelopmentBuild=$([int]$DevelopmentBuild)"
+        "/O$installerDirectory"
         $installerScript
+    )
+    Invoke-NativeCommand $installerCompiler @installerCompilerArguments
 
-    $installer = Join-Path $installerDirectory "MIDISplitter_v${projectVersion}_Windows_x64_Setup.exe"
+    $installer = Join-Path $installerDirectory $installerName
     if (-not (Test-Path -LiteralPath $installer)) {
         throw "The Windows installer was not created: $installer"
     }
 
     New-Item -ItemType Directory -Path (Join-Path $StagingDirectory 'VST3') | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $StagingDirectory 'Installers') | Out-Null
-    Copy-Item -LiteralPath $stagedPlugin -Destination (Join-Path $StagingDirectory 'VST3\MIDI Splitter.vst3') -Recurse
+    Copy-Item -LiteralPath $stagedPlugin -Destination (Join-Path $StagingDirectory "VST3\$PluginName.vst3") -Recurse
     Copy-Item -LiteralPath $installer -Destination (Join-Path $StagingDirectory 'Installers')
     $testStatus = if ($testExitCode -eq 0) { 'passed' } else { "FAILED (CTest exit code $testExitCode)" }
     Set-Content -LiteralPath (Join-Path $StagingDirectory 'BUILD_INFO.txt') `
         -Value @(
-            "Product: MIDI Splitter"
+            "Product: $PluginName"
             "Project version: $projectVersion"
             'Platform: Windows 11 ARM64 VM, native MSVC x64 target'
             'Plugin format: VST3 x64 (PE/AMD64 verified)'
@@ -233,6 +254,7 @@ try {
 
     Write-Output "Windows x64 VST3: $stagedPlugin"
     Write-Output "Windows installer: $installer"
+    Write-Output "Windows VM workspace: $ProjectWorkspace"
     Write-Output "Temporary artifacts ready for retrieval: midisplitter-artifacts-$RunId"
     $Succeeded = $true
 } finally {

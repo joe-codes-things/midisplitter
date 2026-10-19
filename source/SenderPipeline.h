@@ -20,6 +20,7 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <memory>
 #include <atomic>
+#include <algorithm>
 
 /**
  * @brief Complete processing pipeline for Sender mode
@@ -518,9 +519,8 @@ inline std::vector<VoiceAssignment> SenderPipeline::processBlockAndGetAssignment
         allAssignments.emplace_back(voice);
     }
     
-    if (!processingEnabled_) {
+    if (!processingEnabled_)
         return allAssignments;
-    }
     
     auto& logger = IPCTraceLogger::getInstance();
     
@@ -664,6 +664,12 @@ inline std::vector<VoiceAssignment> SenderPipeline::processBlockAndGetAssignment
             }
         }
         
+        const bool hasVoiceData = std::any_of(
+            allAssignments.begin(), allAssignments.end(),
+            [](const VoiceAssignment& assignment) { return !assignment.notes.empty(); });
+        if (hasVoiceData)
+            sendVoiceAssignments(allAssignments);
+
         return allAssignments;
         
     } catch (const std::exception& e) {
@@ -1088,8 +1094,7 @@ inline bool SenderPipeline::initializeIPC() {
     auto& logger = IPCTraceLogger::getInstance();
     juce::String format = (pluginFormat_ == PluginController::PluginFormat::VST3) ? "VST3" : "AU";
     
-    // Use fixed session ID for VST3 IPC (both Sender and Receiver use "default")
-    juce::String sessionId = "default";
+    const juce::String sessionId = IPCManagerVST3_Socket::EXPERIMENT_SESSION_ID;
     logger.initialize(sessionId);
     
     logger.logEvent(IPCTraceLogger::EventType::ConnectionAttempt, "Sender", format, 0,

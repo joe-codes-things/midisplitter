@@ -73,9 +73,10 @@
 - Status: **RESOLVED** (architectural change in v0.09)
 - Detected: 2026-05-24
 - Resolved: 2026-05-24 (v0.09)
-- Resolution: Converted plugin from MIDI Effect to VST Instrument. Plugin now outputs MIDI directly on channels 1-8 instead of using IPC. This bypasses the Cubase limitation that only allows Steinberg MIDI plugins in MIDI Insert slots.
-- Root cause: Cubase doesn't support third-party MIDI FX plugins in MIDI Insert slots. Plugin was being loaded in audio insert slots where it couldn't receive MIDI input.
+- Historical resolution: Converted plugin from MIDI Effect to VST Instrument. The instrument outputs MIDI on channels 1-8 instead of using IPC.
+- Historical root-cause report: Cubase at the time was reported to allow only Steinberg MIDI plug-ins in MIDI Insert slots; the third-party plug-in was being loaded as an audio Insert and did not receive MIDI input there.
 - Solution: Build as a VST Instrument (`IS_SYNTH TRUE`) and use MIDI channel-based voice distribution (Voice 1 = Channel 1, Voice 2 = Channel 2, etc.). The plugin now supports up to 16 voices; hosts are responsible for routing channels between tracks.
+- Current status of the report: this historical behavior has not been re-verified in Cubase 15. Cubase 15's manual documents MIDI Inserts as a separate MIDI signal path and distinguishes them from audio Inserts; see [Cubase 15 MIDI routing research](./IMPLEMENTATION-STATUS.md#cubase-15-midi-output-routing-research).
 
 ### B002: Cubase crashes when opening the plugin editor
 

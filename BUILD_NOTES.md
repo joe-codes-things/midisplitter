@@ -1,6 +1,9 @@
 # Build Notes for MIDI Splitter Plugin
 
-Use the platform-specific build scripts for normal development. `build.sh` and `build_quiet.sh` are compatibility wrappers for the macOS build.
+The repository root holds shared project files, documentation, and the active
+source tree. Run these
+commands from the repository root; `build.sh` and `build_quiet.sh` are
+compatibility wrappers for the macOS build.
 
 ## ⚠️ CRITICAL CONFIGURATION RULES
 
@@ -56,7 +59,14 @@ VST3 uses different categorization and is configured correctly as:
 ./scripts/build_all.sh     # check Windows VM readiness, then build both platforms
 ```
 
-All production plugin and installer artifacts are staged under `exports/production-builds/macOS/` or `exports/production-builds/Windows/`. CMake state, test products, and temporary build work stay in the separate `build/macOS/` tree (and `build/Windows/` inside the VM workspace). Windows VM connection settings belong in the Git-ignored `.windows-vm.local`; see [docs/WINDOWS_BUILD.md](docs/WINDOWS_BUILD.md). Never put a private SSH key in the repository or transfer archive.
+Production release artifacts are staged under `exports/production-builds/` when
+building `main`; development artifacts stay under
+`exports/development-builds/`. Local CMake state is
+separated by branch under `build/`. Windows VM
+connection settings belong in the Git-ignored
+`.windows-vm.local`; see
+[docs/WINDOWS_BUILD.md](docs/WINDOWS_BUILD.md). Never put a private SSH key in
+the repository or transfer archive.
 
 MIDI Splitter is available for macOS and Windows: macOS builds VST3 and AU; Windows builds x64 VST3. The Windows installer is unsigned and installs only the VST3 bundle if run.
 

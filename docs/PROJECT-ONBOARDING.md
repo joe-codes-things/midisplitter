@@ -32,18 +32,29 @@ Requirements and local Windows VM/SSH setup are described in
 
 The macOS build requires CMake 3.22+, Xcode command-line tools, and the
 vendored JUCE checkout. The Windows build uses native MSVC and Inno Setup on
-the configured Windows VM. Tests run with CTest; the combined build currently
-passes 79/79 tests on each platform.
+the configured Windows VM. Tests run with CTest. The latest macOS suite passed
+81/81 tests; the latest recorded combined run passed 79/79 tests on Windows.
 
 ## Artifact locations
+
+The paths below describe the production release area populated from `main`.
 
 - macOS VST3: `exports/production-builds/macOS/VST3/MIDI Splitter.vst3`
 - macOS AU: `exports/production-builds/macOS/AU/MIDI Splitter.component`
 - macOS PKG/DMG: `exports/production-builds/macOS/Installers/` (created by the macOS packaging scripts)
 - Windows x64 VST3: `exports/production-builds/Windows/VST3/MIDI Splitter.vst3`
 - Windows installer: `exports/production-builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
-- macOS CMake state: `build/macOS/`
+- macOS CMake state: `build/<branch>/macOS/`
 - Windows CMake state and source mirror: `Coding Projects/MIDISplitterBuild` under the VM user's home
+
+This is a single Git repository rooted at the workspace. Shared documentation,
+plugin source, build tooling, installer definitions, and JUCE all live in their
+respective folders at the root. Build state is ignored and separated by branch.
+The root `exports/` folder contains both production and development artifacts:
+`production-builds/` for `main`, and `development-builds/` for other branches.
+Development builds use a distinct plug-in identity and the Windows VM uses a
+separate branch-specific workspace. Do not run the macOS production packaging
+or system-install scripts unless the repository is on `main`.
 
 Builds do not install plugins or run installers. macOS bundles are ad-hoc
 signed, not Developer ID signed or notarized. The Windows plugin and installer
@@ -57,12 +68,11 @@ automated tests do not validate a DAW host or AU wrapper.
 - `scripts/`: platform build, packaging, validation, and utility scripts.
 - `installer/`: macOS and Windows installer definitions.
 - `JUCE_framework/`: JUCE framework submodule.
-- `docs/`: maintained build, onboarding, status, bug, and feature documentation.
+- `docs/`: shared, version-controlled project documentation.
+- `exports/`: ignored production and development build artifacts.
 
 ## Manual DAW test projects
 
-Local Cubase and Logic Pro test projects live in `daw-testing-mac/` at the
-production checkout root. The entire parent directory is ignored by Git; the
-individual project names do not have their own ignore rules. In the development
-worktree, use the projects in the sibling production checkout rather than
-duplicating the large DAW project bundles.
+Local Cubase and Logic Pro test projects live in
+`daw-testing-mac/`. That directory is ignored by Git
+as a whole; the individual project names do not have their own ignore rules.

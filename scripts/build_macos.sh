@@ -4,8 +4,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_ROOT/build/macOS"
-ARTIFACTS_DIR="$PROJECT_ROOT/exports/production-builds/macOS"
+source "$SCRIPT_DIR/branch_config.sh"
+GIT_BRANCH="$(midisplitter_branch_name "$PROJECT_ROOT")"
+BUILD_DIR="$(midisplitter_build_dir "$PROJECT_ROOT" "$GIT_BRANCH" macOS)"
+PLUGIN_NAME="$(midisplitter_product_name "$GIT_BRANCH")"
+ARTIFACTS_DIR="$(midisplitter_export_dir "$PROJECT_ROOT" "$GIT_BRANCH")/macOS"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "Error: build_macos.sh must be run on macOS." >&2
@@ -31,8 +34,8 @@ cmake --build "$BUILD_DIR" --config Release --parallel
 TEST_STATUS=0
 ctest --test-dir "$BUILD_DIR" --build-config Release --output-on-failure || TEST_STATUS=$?
 
-VST3_SOURCE="$BUILD_DIR/MIDISplitterPlugin_artefacts/Release/VST3/MIDI Splitter.vst3"
-AU_SOURCE="$BUILD_DIR/MIDISplitterPlugin_artefacts/Release/AU/MIDI Splitter.component"
+VST3_SOURCE="$BUILD_DIR/MIDISplitterPlugin_artefacts/Release/VST3/$PLUGIN_NAME.vst3"
+AU_SOURCE="$BUILD_DIR/MIDISplitterPlugin_artefacts/Release/AU/$PLUGIN_NAME.component"
 
 for plugin in "$VST3_SOURCE" "$AU_SOURCE"; do
     if [[ ! -d "$plugin" ]]; then
@@ -43,14 +46,14 @@ for plugin in "$VST3_SOURCE" "$AU_SOURCE"; do
 done
 
 mkdir -p "$ARTIFACTS_DIR/VST3" "$ARTIFACTS_DIR/AU"
-cmake -E rm -rf "$ARTIFACTS_DIR/VST3/MIDI Splitter.vst3"
-cmake -E rm -rf "$ARTIFACTS_DIR/AU/MIDI Splitter.component"
-cmake -E copy_directory "$VST3_SOURCE" "$ARTIFACTS_DIR/VST3/MIDI Splitter.vst3"
-cmake -E copy_directory "$AU_SOURCE" "$ARTIFACTS_DIR/AU/MIDI Splitter.component"
+cmake -E rm -rf "$ARTIFACTS_DIR/VST3/$PLUGIN_NAME.vst3"
+cmake -E rm -rf "$ARTIFACTS_DIR/AU/$PLUGIN_NAME.component"
+cmake -E copy_directory "$VST3_SOURCE" "$ARTIFACTS_DIR/VST3/$PLUGIN_NAME.vst3"
+cmake -E copy_directory "$AU_SOURCE" "$ARTIFACTS_DIR/AU/$PLUGIN_NAME.component"
 
 printf 'macOS VST3: %s\nmacOS AU:   %s\n' \
-    "$ARTIFACTS_DIR/VST3/MIDI Splitter.vst3" \
-    "$ARTIFACTS_DIR/AU/MIDI Splitter.component"
+    "$ARTIFACTS_DIR/VST3/$PLUGIN_NAME.vst3" \
+    "$ARTIFACTS_DIR/AU/$PLUGIN_NAME.component"
 
 if [[ "$TEST_STATUS" -ne 0 ]]; then
     echo "Error: macOS build completed, but CTest reported failures (exit code $TEST_STATUS)." >&2

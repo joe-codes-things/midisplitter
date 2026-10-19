@@ -448,7 +448,7 @@ inline bool ReceiverPipeline::processBlock(juce::MidiBuffer& outputBuffer, int n
 }
 
 inline bool ReceiverPipeline::setVoiceNumber(int voiceNumber) {
-    if (voiceNumber < 1 || voiceNumber > 8) {
+    if (voiceNumber < 1 || voiceNumber > 16) {
         return false;
     }
     
@@ -739,9 +739,8 @@ inline bool ReceiverPipeline::initializeIPC() {
         });
         
         // Try to connect to socket server (will be created by Sender)
-        // We need a common session ID - use a default or discover it
-        // For now, try to connect to a default session
-        bool connected = ipcManagerVST3Socket_->connectToServer("default");
+        bool connected = ipcManagerVST3Socket_->connectToServer(
+            IPCManagerVST3_Socket::EXPERIMENT_SESSION_ID);
         
         // Keep legacy manager for compatibility
         ipcManagerVST3_ = std::make_unique<IPCManagerVST3>();
@@ -842,17 +841,6 @@ inline void ReceiverPipeline::cleanup() {
 }
 
 inline void ReceiverPipeline::processDiscovery() {
-    // For VST3: check connection and poll for data
-    if (pluginFormat_ == PluginController::PluginFormat::VST3 && ipcManagerVST3Socket_) {
-        if (!ipcManagerVST3Socket_->isConnected()) {
-            // Try to reconnect to server
-            ipcManagerVST3Socket_->connectToServer("default");
-        } else {
-            // Poll for incoming file-based data
-            ipcManagerVST3Socket_->pollForData();
-        }
-    }
-    
     // For AU: check connection health and attempt reconnection if needed
     if (pluginFormat_ == PluginController::PluginFormat::AU && ipcManagerAU_) {
         if (!ipcManagerAU_->isConnected()) {

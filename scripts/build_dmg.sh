@@ -8,10 +8,17 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-ARTIFACTS_DIR="$PROJECT_DIR/exports/production-builds/macOS"
+source "$SCRIPT_DIR/branch_config.sh"
+CURRENT_BRANCH="$(midisplitter_branch_name "$PROJECT_DIR")"
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    echo "Error: The macOS production disk image can only be built from the main branch." >&2
+    echo "Experimental builds are not packaged for installation by this script." >&2
+    exit 2
+fi
+ARTIFACTS_DIR="$(midisplitter_export_dir "$PROJECT_DIR" "$CURRENT_BRANCH")/macOS"
 INSTALLER_OUTPUT_DIR="$ARTIFACTS_DIR/Installers"
 INSTALLER_DIR="$PROJECT_DIR/installer"
-WORK_DIR="$PROJECT_DIR/build/macOS/dmg_work"
+WORK_DIR="$(midisplitter_build_dir "$PROJECT_DIR" "$CURRENT_BRANCH" macOS)/dmg_work"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,7 +43,7 @@ echo ""
 if [ ! -f "$PKG_PATH" ]; then
     echo -e "${RED}Error: Installer pkg not found at:${NC}"
     echo "  $PKG_PATH"
-    echo "Run ./scripts/build_installer.sh first."
+    echo "Run $SCRIPT_DIR/build_installer.sh first."
     exit 1
 fi
 
@@ -45,8 +52,8 @@ PKG_SIZE=$(stat -f%z "$PKG_PATH" 2>/dev/null || stat -c%s "$PKG_PATH" 2>/dev/nul
 if [ "$PKG_SIZE" -gt 6000000 ]; then
     echo -e "${YELLOW}Warning: Installer pkg is unusually large ($(numfmt --to=iec $PKG_SIZE 2>/dev/null || echo ${PKG_SIZE} bytes))${NC}"
     echo "This suggests a Debug build was packaged. Expected size: ~2-3MB"
-    echo "Please rebuild plugins with: ./scripts/build.sh"
-    echo "Then run: ./scripts/build_installer.sh"
+    echo "Please rebuild plugins with: $SCRIPT_DIR/build_macos.sh"
+    echo "Then run: $SCRIPT_DIR/build_installer.sh"
     exit 1
 fi
 

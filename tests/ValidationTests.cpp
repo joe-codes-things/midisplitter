@@ -6,7 +6,6 @@
 #include <fstream>
 #if defined(_WIN32)
 #include <cstdio>
-#include <filesystem>
 #endif
 
 /**
@@ -21,19 +20,21 @@ protected:
         // Get project root directory
         projectRoot_ = getProjectRoot();
         
-        // Set up paths
-#if defined(_WIN32)
-        buildDir_ = (std::filesystem::path(projectRoot_).parent_path() / "build" / "Windows").string();
-#elif defined(__APPLE__)
-        buildDir_ = projectRoot_ + "/build/macOS";
+#if defined(MIDISPLITTER_BUILD_DIR)
+        buildDir_ = MIDISPLITTER_BUILD_DIR;
 #else
-        buildDir_ = projectRoot_ + "/build/Linux";
+        buildDir_ = juce::File::getCurrentWorkingDirectory().getFullPathName().toStdString();
 #endif
-        scriptsDir_ = projectRoot_ + "/Scripts";
+#if defined(MIDISPLITTER_PLUGIN_NAME)
+        pluginName_ = MIDISPLITTER_PLUGIN_NAME;
+#else
+        pluginName_ = "MIDI Splitter";
+#endif
+        scriptsDir_ = projectRoot_ + "/scripts";
         
         // Plugin paths
-        vst3PluginPath_ = buildDir_ + "/MIDISplitterPlugin_artefacts/Release/VST3/MIDI Splitter.vst3";
-        auPluginPath_ = buildDir_ + "/MIDISplitterPlugin_artefacts/Release/AU/MIDI Splitter.component";
+        vst3PluginPath_ = buildDir_ + "/MIDISplitterPlugin_artefacts/Release/VST3/" + pluginName_ + ".vst3";
+        auPluginPath_ = buildDir_ + "/MIDISplitterPlugin_artefacts/Release/AU/" + pluginName_ + ".component";
     }
     
     void TearDown() override {
@@ -128,6 +129,7 @@ protected:
     std::string projectRoot_;
     std::string buildDir_;
     std::string scriptsDir_;
+    std::string pluginName_;
     std::string vst3PluginPath_;
     std::string auPluginPath_;
 };
@@ -151,15 +153,15 @@ TEST_F(PluginValidationTest, VST3PluginStructure) {
     // Check Info.plist
 #if defined(_WIN32)
     std::vector<std::string> possibleBinaries = {
-        contentsDir + "/x86_64-win/MIDI Splitter.vst3"
+        contentsDir + "/x86_64-win/" + pluginName_ + ".vst3"
     };
 #else
     std::string infoPlist = contentsDir + "/Info.plist";
     EXPECT_TRUE(fileExists(infoPlist)) << "Info.plist should exist";
     std::vector<std::string> possibleBinaries = {
-        contentsDir + "/MacOS/MIDI Splitter",
-        contentsDir + "/x86_64-mac/MIDI Splitter.so",
-        contentsDir + "/arm64-mac/MIDI Splitter.so"
+        contentsDir + "/MacOS/" + pluginName_,
+        contentsDir + "/x86_64-mac/" + pluginName_ + ".so",
+        contentsDir + "/arm64-mac/" + pluginName_ + ".so"
     };
 #endif
 
@@ -195,7 +197,7 @@ TEST_F(PluginValidationTest, AUPluginStructure) {
     EXPECT_TRUE(fileExists(infoPlist)) << "Info.plist should exist";
     
     // Check for binary
-    std::string binaryPath = contentsDir + "/MacOS/MIDI Splitter";
+    std::string binaryPath = contentsDir + "/MacOS/" + pluginName_;
     EXPECT_TRUE(fileExists(binaryPath)) << "Plugin binary should exist";
 }
 
@@ -277,7 +279,7 @@ TEST_F(PluginValidationTest, PluginMetadataConsistency) {
     // Check VST3 metadata
     if (vst3Built) {
 #if defined(_WIN32)
-        std::string vst3Binary = vst3PluginPath_ + "/Contents/x86_64-win/MIDI Splitter.vst3";
+        std::string vst3Binary = vst3PluginPath_ + "/Contents/x86_64-win/" + pluginName_ + ".vst3";
         EXPECT_TRUE(fileExists(vst3Binary)) << "Windows x64 VST3 binary should exist";
 #else
         std::string vst3InfoPlist = vst3PluginPath_ + "/Contents/Info.plist";

@@ -7,11 +7,18 @@ set -e  # Exit on any error
 
 # Configuration
 TARGET_NAME="MIDISplitterPlugin"
-PLUGIN_NAME="MIDI Splitter"
-BUILD_DIR="build/macOS"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "$SCRIPT_DIR/branch_config.sh"
+GIT_BRANCH="$(midisplitter_branch_name "$PROJECT_ROOT")"
+PLUGIN_NAME="$(midisplitter_product_name "$GIT_BRANCH")"
+BUILD_DIR="$(midisplitter_build_dir "$PROJECT_ROOT" "$GIT_BRANCH" macOS)"
 AU_TYPE="aumf"  # MIDI Effect
-MANUFACTURER_CODE="Mdar"
-PLUGIN_CODE="Mdar"
+MANUFACTURER_CODE="Nliv"
+PLUGIN_CODE="Mdsp"
+if [[ "$GIT_BRANCH" != "main" ]]; then
+    PLUGIN_CODE="MdDv"
+fi
 
 # Colors for output
 RED='\033[0;31m'

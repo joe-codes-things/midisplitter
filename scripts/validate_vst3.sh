@@ -7,8 +7,12 @@ set -e  # Exit on any error
 
 # Configuration
 TARGET_NAME="MIDISplitterPlugin"
-PLUGIN_NAME="MIDI Splitter"
-BUILD_DIR="build/macOS"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "$SCRIPT_DIR/branch_config.sh"
+GIT_BRANCH="$(midisplitter_branch_name "$PROJECT_ROOT")"
+PLUGIN_NAME="$(midisplitter_product_name "$GIT_BRANCH")"
+BUILD_DIR="$(midisplitter_build_dir "$PROJECT_ROOT" "$GIT_BRANCH" macOS)"
 VALIDATOR_PATH=""
 
 # Colors for output
@@ -26,7 +30,7 @@ find_validator() {
     local possible_paths=(
         "/usr/local/bin/validator"
         "/opt/VST_SDK/VST3_SDK/bin/validator"
-        "./JUCE_framework/extras/VST3_SDK/bin/validator"
+        "$PROJECT_ROOT/JUCE_framework/extras/VST3_SDK/bin/validator"
         "$(which validator 2>/dev/null)"
     )
     

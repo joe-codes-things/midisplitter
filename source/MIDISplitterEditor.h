@@ -361,6 +361,9 @@ private:
     // ── Private methods ───────────────────────────────────────────────────
     void initializeComponents();
     void handleVoiceCountChange(int newCount);
+    void handleRoleChange();
+    void handleReceiverVoiceChange();
+    void updateRoleControls();
     void handleModFilterChange(bool enabled);
     void handleExpFilterChange(bool enabled);
     void handleVolFilterChange(bool enabled);
@@ -380,6 +383,9 @@ private:
     std::unique_ptr<juce::Label>      titleLabel_;
     std::unique_ptr<juce::Label>      voiceCountLabel_;
     std::unique_ptr<juce::Label>      voicesLabel_;
+    std::unique_ptr<juce::ComboBox>   roleSelector_;
+    std::unique_ptr<juce::Label>      receiverVoiceLabel_;
+    std::unique_ptr<juce::ComboBox>   receiverVoiceSelector_;
     std::unique_ptr<HoverLabel>       nlaLabel_;
     std::unique_ptr<CCFilterCheckbox> modCheckbox_;
     std::unique_ptr<CCFilterCheckbox> expCheckbox_;
@@ -444,7 +450,7 @@ inline void MIDISplitterEditor::resized()
     gearButton_->setBounds(MARGIN, MARGIN, ICON_SIZE, ICON_SIZE);
 
     // Title — centred, vertically aligned with slider group
-    titleLabel_->setBounds(0, MARGIN + HEADER_HEIGHT + 25, WINDOW_WIDTH, HEADER_HEIGHT + 4);
+    titleLabel_->setBounds(0, MARGIN + HEADER_HEIGHT + 8, WINDOW_WIDTH, HEADER_HEIGHT + 4);
 
     // "Nine Lives Audio" — top-right, nudged up 3px relative to MARGIN
     {
@@ -456,11 +462,13 @@ inline void MIDISplitterEditor::resized()
     }
 
     // ── Slider — sits 6px below the header row ────────────────────────────
-    int sliderTop = MARGIN + HEADER_HEIGHT + 40;  // halfway between original and previous push
-    slider_->setBounds(
-        (WINDOW_WIDTH - SLIDER_WIDTH) / 2,
-        sliderTop + (SLIDER_HEIGHT - 40) / 2,
-        SLIDER_WIDTH, 40);
+    const int sliderTop = roleSelector_ ? 112 : MARGIN + HEADER_HEIGHT + 40;
+    if (roleSelector_)
+        roleSelector_->setBounds((WINDOW_WIDTH - 140) / 2, 75, 140, 24);
+
+    slider_->setBounds((WINDOW_WIDTH - SLIDER_WIDTH) / 2,
+                       sliderTop + (SLIDER_HEIGHT - 40) / 2,
+                       SLIDER_WIDTH, 40);
 
     // ── Voice count + Voices label — 4px below slider, shifted up 10px ────
     int y = sliderTop + SLIDER_HEIGHT - 21;
@@ -468,6 +476,11 @@ inline void MIDISplitterEditor::resized()
     voiceCountLabel_->setBounds((WINDOW_WIDTH - 60) / 2, y, 60, 20);
     y += 20;
     voicesLabel_->setBounds(0, y, WINDOW_WIDTH, 20);
+
+    if (receiverVoiceLabel_ && receiverVoiceSelector_) {
+        receiverVoiceLabel_->setBounds(0, 136, WINDOW_WIDTH, 20);
+        receiverVoiceSelector_->setBounds((WINDOW_WIDTH - 100) / 2, 158, 100, 26);
+    }
 
     // ── CC filter checkboxes — boxes near bottom-left, labels at very bottom ─
     // Labels anchor to the bottom edge (MARGIN from bottom).
@@ -503,6 +516,37 @@ inline void MIDISplitterEditor::initializeComponents()
     titleLabel_->setJustificationType(juce::Justification::centred);
     titleLabel_->setColour(juce::Label::textColourId, UIColors::PrimaryText);
     addAndMakeVisible(*titleLabel_);
+
+    if (processor_.getPluginController().getPluginFormat() == PluginController::PluginFormat::VST3) {
+        roleSelector_ = std::make_unique<juce::ComboBox>("Plugin role");
+        roleSelector_->addItem("Sender", 1);
+        roleSelector_->addItem("Receiver", 2);
+        roleSelector_->setColour(juce::ComboBox::backgroundColourId, UIColors::Surface2);
+        roleSelector_->setColour(juce::ComboBox::textColourId, UIColors::PrimaryText);
+        roleSelector_->setColour(juce::ComboBox::outlineColourId, UIColors::Border);
+        roleSelector_->setSelectedId(
+            processor_.getPluginController().getMode() == PluginController::Mode::Sender ? 1 : 2,
+            juce::dontSendNotification);
+        roleSelector_->onChange = [this]() { handleRoleChange(); };
+        addAndMakeVisible(*roleSelector_);
+
+        receiverVoiceLabel_ = std::make_unique<juce::Label>("ReceiveVoiceLabel", "Receive voice");
+        receiverVoiceLabel_->setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::plain)));
+        receiverVoiceLabel_->setJustificationType(juce::Justification::centred);
+        receiverVoiceLabel_->setColour(juce::Label::textColourId, UIColors::SecondaryText);
+        addAndMakeVisible(*receiverVoiceLabel_);
+
+        receiverVoiceSelector_ = std::make_unique<juce::ComboBox>("Receive voice");
+        for (int voice = 1; voice <= 16; ++voice)
+            receiverVoiceSelector_->addItem(juce::String(voice), voice);
+        receiverVoiceSelector_->setColour(juce::ComboBox::backgroundColourId, UIColors::Surface2);
+        receiverVoiceSelector_->setColour(juce::ComboBox::textColourId, UIColors::PrimaryText);
+        receiverVoiceSelector_->setColour(juce::ComboBox::outlineColourId, UIColors::Border);
+        receiverVoiceSelector_->setSelectedId(
+            processor_.getPluginController().getVoiceNumber(), juce::dontSendNotification);
+        receiverVoiceSelector_->onChange = [this]() { handleReceiverVoiceChange(); };
+        addAndMakeVisible(*receiverVoiceSelector_);
+    }
 
     // ── Nine Lives Audio (hover-lit, same dim/bright pair as gear) ────────
     nlaLabel_ = std::make_unique<HoverLabel>(
@@ -643,6 +687,7 @@ inline void MIDISplitterEditor::initializeComponents()
     modCheckbox_->setChecked(ctrl.isModEnabled(), juce::dontSendNotification);
     expCheckbox_->setChecked(ctrl.isExpEnabled(), juce::dontSendNotification);
     volCheckbox_->setChecked(ctrl.isVolEnabled(), juce::dontSendNotification);
+    updateRoleControls();
 }
 
 inline void MIDISplitterEditor::handleVoiceCountChange(int newCount) {
@@ -655,6 +700,44 @@ inline void MIDISplitterEditor::handleVoiceCountChange(int newCount) {
     
     // Also update plugin controller for immediate UI feedback
     processor_.setVoiceCount(newCount);
+}
+
+inline void MIDISplitterEditor::handleRoleChange() {
+    if (!roleSelector_)
+        return;
+
+    const auto mode = roleSelector_->getSelectedId() == 2
+        ? PluginController::Mode::Receiver
+        : PluginController::Mode::Sender;
+    processor_.getPluginController().setMode(mode);
+    updateRoleControls();
+}
+
+inline void MIDISplitterEditor::handleReceiverVoiceChange() {
+    if (receiverVoiceSelector_)
+        processor_.getPluginController().setVoiceNumber(receiverVoiceSelector_->getSelectedId());
+}
+
+inline void MIDISplitterEditor::updateRoleControls() {
+    const bool isSender = processor_.getPluginController().getMode() == PluginController::Mode::Sender;
+
+    slider_->setVisible(isSender);
+    voiceCountLabel_->setVisible(isSender);
+    voicesLabel_->setVisible(isSender);
+    if (receiverVoiceLabel_)
+        receiverVoiceLabel_->setVisible(!isSender);
+    if (receiverVoiceSelector_)
+        receiverVoiceSelector_->setVisible(!isSender);
+
+    for (auto* component : { static_cast<juce::Component*>(modCheckbox_.get()),
+                             static_cast<juce::Component*>(expCheckbox_.get()),
+                             static_cast<juce::Component*>(volCheckbox_.get()),
+                             static_cast<juce::Component*>(modLabel_.get()),
+                             static_cast<juce::Component*>(expLabel_.get()),
+                             static_cast<juce::Component*>(volLabel_.get()) }) {
+        if (component != nullptr)
+            component->setVisible(isSender);
+    }
 }
 
 inline void MIDISplitterEditor::handleModFilterChange(bool enabled) {
@@ -700,6 +783,19 @@ inline void MIDISplitterEditor::timerCallback()
 {
     // Read from automation parameters to ensure UI reflects automation changes
     auto& params = processor_.getParameters();
+
+    if (roleSelector_) {
+        const int selectedRole =
+            processor_.getPluginController().getMode() == PluginController::Mode::Sender ? 1 : 2;
+        if (roleSelector_->getSelectedId() != selectedRole) {
+            roleSelector_->setSelectedId(selectedRole, juce::dontSendNotification);
+            updateRoleControls();
+        }
+
+        const int selectedVoice = processor_.getPluginController().getVoiceNumber();
+        if (receiverVoiceSelector_ && receiverVoiceSelector_->getSelectedId() != selectedVoice)
+            receiverVoiceSelector_->setSelectedId(selectedVoice, juce::dontSendNotification);
+    }
     
     // Get parameter values (Bypass=0, VoiceCount=1, Mod=2, Exp=3, Vol=4)
     int voiceCount = 4;
@@ -790,9 +886,6 @@ inline void MIDISplitterEditor::showAboutPopup()
         case juce::AudioProcessor::wrapperType_AudioUnit:
         case juce::AudioProcessor::wrapperType_AudioUnitv3:
             pluginFormat = "AU";
-            break;
-        case juce::AudioProcessor::wrapperType_AAX:
-            pluginFormat = "AAX";
             break;
         case juce::AudioProcessor::wrapperType_Standalone:
             pluginFormat = "Standalone";

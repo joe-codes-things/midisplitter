@@ -38,11 +38,29 @@ phase.
 
 ### DAW test projects
 
-The local Cubase and Logic Pro test projects are kept under
-`daw-testing-mac/` in the project root. They are ignored by Git as a group and
-are not part of the source checkout.
+The local Cubase and Logic Pro test projects are kept in the ignored
+`daw-testing-mac/` folder at the workspace root.
 
 ## Quick Start
+
+The project is one Git repository at the workspace root. Shared documentation,
+source code, tests, build scripts, installer definitions, and the JUCE
+submodule live here in their respective folders. The root `exports/` folder
+holds both production and development build outputs.
+
+```bash
+git status --short --branch
+./scripts/build_macos.sh
+# Start the Windows VM before running Windows builds:
+./scripts/build_windows.sh
+```
+
+Build caches are separated by branch under `build/`. Development artifacts are
+staged in `exports/development-builds/`; production artifacts are staged in
+`exports/production-builds/` when building `main`.
+Experimental plugins have a distinct name and host identity, and Windows
+builds use a branch-specific VM workspace. macOS production package and
+system-install scripts are restricted to `main`.
 
 ### Installation
 
@@ -146,7 +164,7 @@ The plugin features a clean, minimal design focused on core functionality with a
 
 ## Building from Source
 
-> **⚠️ CRITICAL:** The macOS AU plugin MUST be built as `kAudioUnitType_MusicDevice` (Instrument type). Never change `AU_MAIN_TYPE` in CMakeLists.txt to `kAudioUnitType_MIDIProcessor` or any other type. This will break Logic Pro compatibility. See [BUILD_NOTES.md](BUILD_NOTES.md) for details.
+> **⚠️ CRITICAL:** The macOS AU plugin MUST be built as `kAudioUnitType_MusicDevice` (Instrument type). Never change `AU_MAIN_TYPE` in `CMakeLists.txt` to `kAudioUnitType_MIDIProcessor` or any other type. This will break Logic Pro compatibility. See [BUILD_NOTES.md](BUILD_NOTES.md) for details.
 
 ### Prerequisites
 
@@ -164,7 +182,13 @@ See [Windows build and VM setup](docs/WINDOWS_BUILD.md) for the native Windows t
 ./scripts/build_macos.sh
 ```
 
-This configures and tests in `build/macOS/`, then stages the plugins in `exports/production-builds/macOS/`. macOS builds require CMake 3.22+, Xcode command-line tools, and the included JUCE checkout. No explicit minimum macOS deployment target is set in this project; the selected Apple toolchain and JUCE defaults apply.
+This configures and tests in `build/<branch>/macOS/`,
+then stages development plugins in
+`exports/development-builds/macOS/`. macOS builds
+require CMake 3.22+, Xcode command-line tools, and the included
+`JUCE_framework/` checkout.
+No explicit minimum macOS deployment target is set in this project; the
+selected Apple toolchain and JUCE defaults apply.
 
 ### Build Windows plugins
 
@@ -184,12 +208,15 @@ The combined script checks Windows VM readiness first, builds and tests the macO
 
 ### Build outputs
 
+The paths below are the production outputs from `main`. Development outputs
+are kept under `exports/development-builds/`.
+
 - **macOS VST3:** `exports/production-builds/macOS/VST3/MIDI Splitter.vst3`
 - **macOS AU:** `exports/production-builds/macOS/AU/MIDI Splitter.component`
 - **Windows x64 VST3:** `exports/production-builds/Windows/VST3/MIDI Splitter.vst3`
 - **Windows x64 installer:** `exports/production-builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
 - **Windows VM workspace:** `Coding Projects/MIDISplitterBuild` under the VM user's home directory
-- **Tests and generated build state:** `build/macOS/` locally and `build/Windows/` in the VM workspace
+- **Tests and generated build state:** `build/<branch>/macOS/` locally and `build/Windows/` in the VM workspace
 
 macOS builds are ad-hoc signed only, not Developer ID signed or notarized. Windows plugin and installer are unsigned. The installer installs only the VST3 bundle to the standard shared Windows VST3 folder when a user runs it with administrator access. The project owner has confirmed that the Windows installation works. The automated build does not run the installer or a DAW, and no DAW/version compatibility matrix is claimed.
 
@@ -198,10 +225,13 @@ macOS builds are ad-hoc signed only, not Developer ID signed or notarized. Windo
 ### Run All Tests
 
 ```bash
-ctest --test-dir build/macOS --output-on-failure
+ctest --test-dir build/main/macOS --output-on-failure
 ```
 
-Use `./scripts/build_windows.sh` to run the Windows test suite through the configured VM, or `./scripts/build_all.sh` to build and test both platforms.
+Use `./scripts/build_windows.sh` to run the Windows
+test suite through the configured VM, or
+`./scripts/build_all.sh` to build and test both
+platforms.
 
 ### Validation Scripts
 
@@ -255,7 +285,8 @@ Copyright (c) 2026 Nine Lives Audio
 - macOS VST3 and AU support, plus Windows x64 VST3 support
 - Control Change broadcasting with selective CC filtering (Modulation CC1, Expression CC11, Volume CC7)
 - State persistence
-- Automated macOS and Windows test suites pass (79/79 tests on each platform)
+- The latest post-reorganization macOS CTest run passed 81/81 tests; the
+  Windows suite's last recorded run passed 79/79 before the reorganization
 - Bug fixes for editor creation, hanging notes, and note timing
 
 ---

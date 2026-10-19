@@ -7,8 +7,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_DIR/build/macOS"
-ARTIFACTS_DIR="$PROJECT_DIR/exports/production-builds/macOS"
+source "$SCRIPT_DIR/branch_config.sh"
+CURRENT_BRANCH="$(midisplitter_branch_name "$PROJECT_DIR")"
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    echo "Error: The macOS production installer can only be built from the main branch." >&2
+    echo "Experimental builds are not packaged for installation by this script." >&2
+    exit 2
+fi
+BUILD_DIR="$(midisplitter_build_dir "$PROJECT_DIR" "$CURRENT_BRANCH" macOS)"
+ARTIFACTS_DIR="$(midisplitter_export_dir "$PROJECT_DIR" "$CURRENT_BRANCH")/macOS"
 INSTALLER_OUTPUT_DIR="$ARTIFACTS_DIR/Installers"
 INSTALLER_DIR="$PROJECT_DIR/installer"
 WORK_DIR="$BUILD_DIR/installer_work"  # scratch space, cleaned up after
@@ -43,7 +50,7 @@ echo ""
 if [ ! -d "$VST3_SRC" ]; then
     echo -e "${RED}Error: VST3 plugin not found at:${NC}"
     echo "  $VST3_SRC"
-    echo "Run ./scripts/build.sh first."
+    echo "Run $SCRIPT_DIR/build_macos.sh first."
     exit 1
 fi
 
@@ -54,7 +61,7 @@ if [ -f "$VST3_BINARY" ]; then
     if [ "$VST3_SIZE" -gt 6000000 ]; then
         echo -e "${YELLOW}Warning: VST3 binary is unusually large ($(numfmt --to=iec $VST3_SIZE || echo ${VST3_SIZE} bytes))${NC}"
         echo "This suggests a Debug build. Expected size: ~3-4MB"
-        echo "Please rebuild with: ./scripts/build.sh (ensures Release mode)"
+        echo "Please rebuild with: $SCRIPT_DIR/build_macos.sh (ensures Release mode)"
         exit 1
     fi
 fi
@@ -62,7 +69,7 @@ fi
 if [ ! -d "$AU_SRC" ]; then
     echo -e "${RED}Error: AU plugin not found at:${NC}"
     echo "  $AU_SRC"
-    echo "Run ./build.sh first."
+    echo "Run $SCRIPT_DIR/build_macos.sh first."
     exit 1
 fi
 

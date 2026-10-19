@@ -4,9 +4,27 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+REPOSITORY_ROOT="$(git -C "$PROJECT_ROOT" rev-parse --show-toplevel)"
+source "$SCRIPT_DIR/branch_config.sh"
 CONFIG_FILE="$PROJECT_ROOT/.windows-vm.local"
-TRANSFER_ROOT="$PROJECT_ROOT/build/Windows/transfer"
-ARTIFACTS_DIR="$PROJECT_ROOT/exports/production-builds/Windows"
+if [[ -n "${MIDI_SPLITTER_WINDOWS_CONFIG:-}" ]]; then
+    CONFIG_FILE="$MIDI_SPLITTER_WINDOWS_CONFIG"
+fi
+GIT_BRANCH="$(midisplitter_branch_name "$PROJECT_ROOT")"
+BRANCH_SLUG="$(midisplitter_branch_slug "$GIT_BRANCH")"
+TRANSFER_ROOT="$PROJECT_ROOT/build/$BRANCH_SLUG/Windows/transfer"
+PLUGIN_NAME="$(midisplitter_product_name "$GIT_BRANCH")"
+EXPORT_CATEGORY="$(midisplitter_export_category "$GIT_BRANCH")"
+ARTIFACTS_DIR="$(midisplitter_export_dir "$PROJECT_ROOT" "$GIT_BRANCH")/Windows"
+if [[ "$GIT_BRANCH" == "main" ]]; then
+    VM_WORKSPACE_NAME="MIDISplitterBuild"
+    DEVELOPMENT_BUILD=false
+    INSTALLER_BASE_NAME="MIDISplitter"
+else
+    VM_WORKSPACE_NAME="MIDISplitterBuild-$BRANCH_SLUG"
+    DEVELOPMENT_BUILD=true
+    INSTALLER_BASE_NAME="MIDISplitter_${BRANCH_SLUG}"
+fi
 SSH_TARGET="${WINDOWS_SSH_TARGET:-}"
 SSH_KEY="${WINDOWS_SSH_KEY:-}"
 CHECK_ONLY=false
@@ -122,9 +140,9 @@ mkdir -p "$LOCAL_RUN_DIR"
 
 # Transfer only tracked and non-ignored project files; local credentials, build
 # trees, previous artifacts, and unrelated ignored files never enter the archive.
-git -C "$PROJECT_ROOT" ls-files --cached --others --exclude-standard -z |
+git -C "$REPOSITORY_ROOT" ls-files --cached --others --exclude-standard --full-name -z |
     tar --exclude='*/.git' --exclude='*/.git/**' \
-        -czf "$ARCHIVE" -C "$PROJECT_ROOT" --null -T -
+        -czf "$ARCHIVE" -C "$REPOSITORY_ROOT" --null -T -
 
 echo "Transferring the current project source to its dedicated Windows workspace..."
 scp "${SSH_OPTIONS[@]}" "$ARCHIVE" "$SSH_TARGET:$REMOTE_ARCHIVE"
@@ -132,7 +150,8 @@ scp "${SSH_OPTIONS[@]}" "$ARCHIVE" "$SSH_TARGET:$REMOTE_ARCHIVE"
 REMOTE_BUILD_STARTED=true
 remote_script="\$ErrorActionPreference = 'Stop'
 \$userHome = [Environment]::GetFolderPath('UserProfile')
-\$workspace = Join-Path \$userHome 'Coding Projects\\MIDISplitterBuild'
+\$projectWorkspaces = Join-Path \$userHome 'Coding Projects'
+\$workspace = Join-Path \$projectWorkspaces '$VM_WORKSPACE_NAME'
 \$workspaceMarker = Join-Path \$workspace '.midisplitter-build-workspace'
 \$source = Join-Path \$workspace 'source'
 \$incoming = Join-Path \$userHome 'midisplitter-incoming-$RUN_ID'
@@ -155,7 +174,7 @@ try {
     if (\$LASTEXITCODE -ge 8) { throw \"Source synchronization failed with robocopy exit code \$LASTEXITCODE.\" }
     \$buildScript = Join-Path \$source 'scripts\\build_windows.ps1'
     if (-not (Test-Path -LiteralPath \$buildScript)) { throw \"Transferred Windows build script is missing: \$buildScript\" }
-    & \$buildScript -RunId '$RUN_ID'
+    & \$buildScript -RunId '$RUN_ID' -WorkspaceName '$VM_WORKSPACE_NAME' -PluginName '$PLUGIN_NAME' -BranchSlug '$BRANCH_SLUG' -ExportCategory '$EXPORT_CATEGORY' -DevelopmentBuild \$$DEVELOPMENT_BUILD
     if (\$LASTEXITCODE -and \$LASTEXITCODE -ne 0) { throw \"Windows build script failed with exit code \$LASTEXITCODE.\" }
 } finally {
     if (Test-Path -LiteralPath \$incoming) { Remove-Item -LiteralPath \$incoming -Recurse -Force }
@@ -171,9 +190,9 @@ echo "Retrieving this run's Windows artifacts..."
 scp "${SSH_OPTIONS[@]}" -r "$SSH_TARGET:$REMOTE_ARTIFACTS/." "$TRANSFER_ROOT/$RUN_ID/artifacts/"
 
 VERSION="$(sed -n 's/^project(MIDISplitterPlugin VERSION \([0-9.]*\)).*/\1/p' "$PROJECT_ROOT/CMakeLists.txt" | head -n 1)"
-STAGED_PLUGIN="$TRANSFER_ROOT/$RUN_ID/artifacts/VST3/MIDI Splitter.vst3"
-STAGED_BINARY="$STAGED_PLUGIN/Contents/x86_64-win/MIDI Splitter.vst3"
-STAGED_INSTALLER="$TRANSFER_ROOT/$RUN_ID/artifacts/Installers/MIDISplitter_v${VERSION}_Windows_x64_Setup.exe"
+STAGED_PLUGIN="$TRANSFER_ROOT/$RUN_ID/artifacts/VST3/$PLUGIN_NAME.vst3"
+STAGED_BINARY="$STAGED_PLUGIN/Contents/x86_64-win/$PLUGIN_NAME.vst3"
+STAGED_INSTALLER="$TRANSFER_ROOT/$RUN_ID/artifacts/Installers/${INSTALLER_BASE_NAME}_v${VERSION}_Windows_x64_Setup.exe"
 
 for artifact in "$STAGED_PLUGIN" "$STAGED_BINARY" "$STAGED_INSTALLER"; do
     if [[ ! -e "$artifact" ]]; then
@@ -200,15 +219,16 @@ print(f"Verified Windows x64 PE binary: {path}")
 file "$STAGED_BINARY"
 
 mkdir -p "$ARTIFACTS_DIR/VST3" "$ARTIFACTS_DIR/Installers"
-cmake -E rm -rf "$ARTIFACTS_DIR/VST3/MIDI Splitter.vst3"
-cmake -E copy_directory "$STAGED_PLUGIN" "$ARTIFACTS_DIR/VST3/MIDI Splitter.vst3"
+cmake -E rm -rf "$ARTIFACTS_DIR/VST3/$PLUGIN_NAME.vst3"
+cmake -E copy_directory "$STAGED_PLUGIN" "$ARTIFACTS_DIR/VST3/$PLUGIN_NAME.vst3"
 cp "$STAGED_INSTALLER" "$ARTIFACTS_DIR/Installers/"
 BUILD_INFO="$TRANSFER_ROOT/$RUN_ID/artifacts/BUILD_INFO.txt"
 cp "$BUILD_INFO" "$ARTIFACTS_DIR/"
 
-printf 'Windows VST3:    %s\nWindows installer: %s\n' \
-    "$ARTIFACTS_DIR/VST3/MIDI Splitter.vst3" \
-    "$ARTIFACTS_DIR/Installers/$(basename "$STAGED_INSTALLER")"
+printf 'Windows VST3:     %s\nWindows installer: %s\nWindows VM workspace: %s\n' \
+    "$ARTIFACTS_DIR/VST3/$PLUGIN_NAME.vst3" \
+    "$ARTIFACTS_DIR/Installers/$(basename "$STAGED_INSTALLER")" \
+    "$VM_WORKSPACE_NAME"
 
 if grep -q '^Windows tests: FAILED ' "$BUILD_INFO"; then
     echo "Error: The Windows plugin and installer were built, but the Windows CTest suite reported failures." >&2

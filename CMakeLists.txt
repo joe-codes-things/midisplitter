@@ -21,22 +21,41 @@ endif()
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 
 # Detect current git branch for beta/experimental naming
-execute_process(
-    COMMAND git branch --show-current
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_BRANCH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
+if(DEFINED ENV{MIDI_SPLITTER_GIT_BRANCH} AND NOT "$ENV{MIDI_SPLITTER_GIT_BRANCH}" STREQUAL "")
+    set(GIT_BRANCH "$ENV{MIDI_SPLITTER_GIT_BRANCH}")
+else()
+    execute_process(
+        COMMAND git branch --show-current
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_BRANCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+
+if(GIT_BRANCH STREQUAL "")
+    execute_process(
+        COMMAND git rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    set(GIT_BRANCH "detached-${GIT_COMMIT}")
+endif()
 
 # Set product name based on branch
-if(GIT_BRANCH STREQUAL "main" OR GIT_BRANCH STREQUAL "")
+if(GIT_BRANCH STREQUAL "main")
     set(PLUGIN_PRODUCT_NAME "MIDI Splitter")
+    set(PLUGIN_CODE Mdsp)
+    set(PLUGIN_BUNDLE_ID "com.ninelivesaudio.midisplitter")
 else()
-    # Extract feature name from branch (e.g., "feature/daw-automation" -> "daw-automation")
-    string(REGEX REPLACE "^(feature|fix|experiment)/(.+)$" "\\2" BRANCH_NAME "${GIT_BRANCH}")
-    # Use NLA naming convention: nla_midisplitter_branch-name_v0.0.1
+    string(TOLOWER "${GIT_BRANCH}" BRANCH_NAME)
+    string(REGEX REPLACE "[^a-z0-9]+" "-" BRANCH_NAME "${BRANCH_NAME}")
+    string(REGEX REPLACE "^-|-$" "" BRANCH_NAME "${BRANCH_NAME}")
     set(PLUGIN_PRODUCT_NAME "nla_midisplitter_${BRANCH_NAME}_v0.0.1")
+    set(PLUGIN_CODE MdDv)
+    set(PLUGIN_BUNDLE_ID "com.ninelivesaudio.midisplitter.development")
 endif()
 
 message(STATUS "Git Branch: ${GIT_BRANCH}")
@@ -62,26 +81,24 @@ endif()
 juce_add_plugin(MIDISplitterPlugin
     COMPANY_NAME "Nine Lives Audio"
     PLUGIN_MANUFACTURER_CODE Nliv
-    PLUGIN_CODE Mdsp
+    PLUGIN_CODE ${PLUGIN_CODE}
     FORMATS ${PLUGIN_FORMATS}
     PRODUCT_NAME "${PLUGIN_PRODUCT_NAME}"
     DESCRIPTION "Distribute MIDI notes across multiple plugin instances"
     VERSION "${PROJECT_VERSION}"
-    # IS_MIDI_EFFECT affects JUCE's MIDI handling and VST3 categorization
-    # It does NOT control AU categorization (that's handled by AU_MAIN_TYPE)
-    IS_SYNTH TRUE
+    # Keep MIDI processing enabled while categorizing the VST3 as an effect.
+    IS_SYNTH FALSE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
     IS_MIDI_EFFECT TRUE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE
-    VST3_CATEGORIES "Instrument" "MIDI"
+    VST3_CATEGORIES "Fx" "MIDI"
     # ⚠️  CRITICAL: DO NOT CHANGE AU_MAIN_TYPE FROM kAudioUnitType_MusicDevice
     # This MUST remain as MusicDevice for Logic Pro compatibility
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
     AU_SANDBOX_SAFE TRUE
-    PLUGIN_AAX_IDENTIFIER com.ninelivesaudio.midisplitter
-    BUNDLE_ID com.ninelivesaudio.midisplitter
+    BUNDLE_ID ${PLUGIN_BUNDLE_ID}
 )
 
 # Add source files
@@ -174,6 +191,7 @@ set(PLUGIN_TEST_SOURCES
     tests/test_main.cpp
     tests/test_MIDIEvent.cpp
     tests/test_IPCMessage.cpp
+    tests/test_IPCManagerVST3_Socket.cpp
     tests/PropertyTest_ControlChangeBroadcasting.cpp
     tests/ValidationTests.cpp
     tests/EndToEnd_SenderToReceiver_VST3.cpp
@@ -205,6 +223,8 @@ target_compile_definitions(MIDISplitterPluginTests
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         MIDISPLITTER_PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}"
+        MIDISPLITTER_BUILD_DIR="${CMAKE_BINARY_DIR}"
+        MIDISPLITTER_PLUGIN_NAME="${PLUGIN_PRODUCT_NAME}"
 )
 
 # Discover tests

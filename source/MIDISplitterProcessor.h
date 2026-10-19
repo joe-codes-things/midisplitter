@@ -354,9 +354,10 @@ inline bool MIDISplitterProcessor::isBusesLayoutSupported(const BusesLayout&) co
 inline void MIDISplitterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
     juce::ScopedNoDenormals noDenormals;
     
-    // Check bypass parameter first - if bypassed, pass MIDI through unchanged
+    // Keep sender bypass passthrough without leaking receiver track input.
     if (*bypassParam_) {
-        // Bypass is enabled - pass through MIDI unchanged
+        if (pluginController_->isReceiver())
+            midiMessages.clear();
         return;
     }
     

@@ -5,7 +5,14 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_DIR/build"
+source "$SCRIPT_DIR/branch_config.sh"
+CURRENT_BRANCH="$(midisplitter_branch_name "$PROJECT_DIR")"
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    echo "Error: This installer targets the production plugin and is disabled outside the main branch." >&2
+    echo "To test an experimental plugin, copy its uniquely named bundle manually to a user plugin folder." >&2
+    exit 2
+fi
+BUILD_DIR="$(midisplitter_build_dir "$PROJECT_DIR" "$CURRENT_BRANCH" macOS)"
 VST3_SRC="$BUILD_DIR/MIDISplitterPlugin_artefacts/Release/VST3/MIDI Splitter.vst3"
 AU_SRC="$BUILD_DIR/MIDISplitterPlugin_artefacts/Release/AU/MIDI Splitter.component"
 

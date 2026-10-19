@@ -38,17 +38,6 @@ _deps/
 # Build count tracking
 .build_count
 
-# Internal documentation (exclude most, allow selected project docs)
-docs/
-!docs/
-docs/*
-!docs/WINDOWS_BUILD.md
-!docs/BUGS.md
-!docs/FEATURE-IDEAS.md
-!docs/README.md
-!docs/PROJECT-ONBOARDING.md
-!docs/IMPLEMENTATION-STATUS.md
-
 # Local agent/assistant workspace configuration
 .github/
 

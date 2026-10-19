@@ -5,23 +5,28 @@
 #include <functional>
 #include <memory>
 #include <atomic>
+#include <array>
+#include <algorithm>
 #include "IPCMessage.h"
 #include "VoiceAssignment.h"
 #include "IPCTraceLogger.h"
+#include "LockFreeQueue.h"
 
 /**
- * IPCManagerVST3_Socket class for VST3 inter-process communication via file-based IPC.
+ * File-based VST3 inter-process transport for the experimental MIDI bridge.
  * 
- * Uses JUCE's File and MemoryBlock to enable communication between
- * Sender and Receiver VST3 instances via files in temp directory. This works
- * reliably across process boundaries when Cubase sandboxes plugins.
+ * Sender events are queued without file I/O on the audio thread. A worker
+ * writes sequenced event files, and Receiver workers consume their voice's
+ * files once.
  * 
  * This replaces the IConnectionPoint-based IPCManagerVST3 which cannot
  * communicate between separate plugin instances.
  */
-class IPCManagerVST3_Socket
+class IPCManagerVST3_Socket : private juce::Thread
 {
 public:
+    static constexpr const char* EXPERIMENT_SESSION_ID = "vst3-midi-bridge-experiment";
+
     /**
      * Constructor
      */
@@ -30,7 +35,7 @@ public:
     /**
      * Destructor
      */
-    ~IPCManagerVST3_Socket();
+    ~IPCManagerVST3_Socket() override;
     
     /**
      * Start as server (Sender mode)
@@ -73,7 +78,7 @@ public:
     
     /**
      * Set voice number for Receiver mode
-     * @param voiceNumber Voice number to listen for (1-8)
+     * @param voiceNumber Voice number to listen for (1-16)
      */
     void setVoiceNumber(uint8_t voiceNumber);
     
@@ -114,10 +119,23 @@ public:
     bool pollForData();
 
 private:
+    struct VoicePacket
+    {
+        uint8_t voiceNumber = 0;
+        uint16_t eventCount = 0;
+        std::array<MIDIEvent, IPCMessage::MAX_EVENTS_PER_MESSAGE> events{};
+    };
+
+    void run() override;
+    bool writeVoiceData(const VoicePacket& packet);
+
     // Configuration
     bool isSender_ = false;
     uint8_t voiceNumber_ = 1;
     juce::String sessionId_;
+    std::atomic<uint64_t> nextMessageSequence_{1};
+    LockFreeQueue<VoicePacket> outgoingQueue_{64};
+    static constexpr int MAX_PENDING_FILES_PER_VOICE = 256;
     
     // Callback for received data
     std::function<void(const std::vector<MIDIEvent>&, uint8_t)> receiveCallback_;
@@ -127,7 +145,7 @@ private:
     
     // File-based IPC helpers
     juce::File getIPCDirectory() const;
-    juce::File getVoiceDataFile(int voiceNumber) const;
+    juce::File getVoiceDataFile(int voiceNumber, uint64_t sequence) const;
     void clearSessionFiles() const;
     
     // Encode voice assignments to memory block
@@ -142,7 +160,8 @@ private:
 // ============================================================================
 
 inline IPCManagerVST3_Socket::IPCManagerVST3_Socket()
-    : isSender_(false)
+    : juce::Thread("MIDISplitter VST3 IPC")
+    , isSender_(false)
     , voiceNumber_(1)
     , isConnected_(false)
 {
@@ -179,8 +198,13 @@ inline bool IPCManagerVST3_Socket::startServer(const juce::String& sessionId)
     
     // Remove any existing data files for this session
     clearSessionFiles();
-    
-    return true;
+
+    if (startThread())
+        return true;
+
+    isConnected_ = false;
+    logger.logError("Sender", "VST3", "Failed to start the VST3 IPC worker thread");
+    return false;
 }
 
 inline bool IPCManagerVST3_Socket::connectToServer(const juce::String& sessionId)
@@ -190,69 +214,55 @@ inline bool IPCManagerVST3_Socket::connectToServer(const juce::String& sessionId
     
     // Check if the IPC directory exists (means server is running)
     juce::File ipcDir = getIPCDirectory();
-    if (!ipcDir.exists()) {
-        return false;  // Server not running yet
-    }
-    
-    isConnected_ = true;
-    return true;
+    isConnected_ = ipcDir.isDirectory();
+
+    if (!isThreadRunning() && !startThread())
+        return false;
+
+    return isConnected_;
 }
 
 inline bool IPCManagerVST3_Socket::sendVoiceData(const std::vector<VoiceAssignment>& assignments)
 {
-    auto& logger = IPCTraceLogger::getInstance();
-    
     if (!isConnected_)
-    {
-        logger.logError("Sender", "VST3", "sendVoiceData: not connected");
-        DBG("sendVoiceData: not connected");
         return false;
-    }
     
     if (!isSender_)
-    {
-        logger.logError("Sender", "VST3", "sendVoiceData: not sender");
-        DBG("sendVoiceData: not sender");
         return false;  // Only sender can send data
-    }
-    
-    logger.logEvent(IPCTraceLogger::EventType::MessageSent, "Sender", "VST3", 0,
-                    "sendVoiceData: sending " + juce::String(assignments.size()) + " voice assignments");
-    DBG("sendVoiceData: sending " << assignments.size() << " voice assignments");
-    
-    // Write each voice assignment to a separate file
+
+    size_t packetsToQueue = 0;
     for (const auto& assignment : assignments)
     {
-        juce::File dataFile = getVoiceDataFile(assignment.voiceNumber);
-        
-        logger.logEvent(IPCTraceLogger::EventType::MessageSent, "Sender", "VST3", assignment.voiceNumber,
-                        "Writing to file: " + dataFile.getFullPathName() + " (" + juce::String(assignment.notes.size()) + " events)");
-        DBG("Writing to file: " << dataFile.getFullPathName() << " (" << assignment.notes.size() << " events)");
-        
-        juce::MemoryBlock data = encodeVoiceData({assignment});
-        
-        // Write data to file (atomic write)
-        juce::TemporaryFile tempFile(dataFile);
-        if (tempFile.getFile().replaceWithData(data.getData(), data.getSize()))
-        {
-            if (!tempFile.overwriteTargetFileWithTemporary())
-            {
-                logger.logError("Sender", "VST3", "Failed to overwrite target file: " + dataFile.getFullPathName());
-                DBG("Failed to overwrite target file: " << dataFile.getFullPathName());
-                return false;
-            }
-            logger.logEvent(IPCTraceLogger::EventType::MessageSent, "Sender", "VST3", assignment.voiceNumber,
-                            "Successfully wrote " + juce::String(data.getSize()) + " bytes");
-            DBG("Successfully wrote " << data.getSize() << " bytes to " << dataFile.getFullPathName());
-        }
-        else
-        {
-            logger.logError("Sender", "VST3", "Failed to write data to temp file");
-            DBG("Failed to write data to temp file");
+        if (assignment.notes.empty())
+            continue;
+
+        if (assignment.voiceNumber < 1 || assignment.voiceNumber > 16 ||
+            assignment.notes.size() > IPCMessage::MAX_EVENTS_PER_MESSAGE)
             return false;
-        }
+
+        ++packetsToQueue;
     }
-    
+
+    if (packetsToQueue == 0)
+        return true;
+
+    if (outgoingQueue_.getFreeSpace() < static_cast<int>(packetsToQueue))
+        return false;
+
+    for (const auto& assignment : assignments)
+    {
+        if (assignment.notes.empty())
+            continue;
+
+        VoicePacket packet;
+        packet.voiceNumber = static_cast<uint8_t>(assignment.voiceNumber);
+        packet.eventCount = static_cast<uint16_t>(assignment.notes.size());
+        std::copy(assignment.notes.begin(), assignment.notes.end(), packet.events.begin());
+
+        if (!outgoingQueue_.push(packet))
+            return false;
+    }
+
     return true;
 }
 
@@ -283,6 +293,8 @@ inline juce::String IPCManagerVST3_Socket::getSessionId() const
 
 inline void IPCManagerVST3_Socket::shutdown()
 {
+    stopThread(-1);
+
     if (isSender_)
     {
         // Clear IPC files but keep the directory
@@ -298,9 +310,15 @@ inline void IPCManagerVST3_Socket::shutdown()
 
 inline bool IPCManagerVST3_Socket::sendControlChange(const MIDIEvent& controlEvent)
 {
-    VoiceAssignment assignment(0); // Broadcast to all voices
-    assignment.notes.push_back(controlEvent);
-    return sendVoiceData({assignment});
+    std::vector<VoiceAssignment> assignments;
+    assignments.reserve(16);
+    for (int voice = 1; voice <= 16; ++voice)
+    {
+        VoiceAssignment assignment(voice);
+        assignment.notes.push_back(controlEvent);
+        assignments.push_back(std::move(assignment));
+    }
+    return sendVoiceData(assignments);
 }
 
 inline int IPCManagerVST3_Socket::getConnectionCount() const
@@ -313,6 +331,74 @@ inline void IPCManagerVST3_Socket::disconnectAll()
 {
     // Remove all IPC files
     clearSessionFiles();
+}
+
+inline void IPCManagerVST3_Socket::run()
+{
+    while (!threadShouldExit())
+    {
+        if (isSender_)
+        {
+            VoicePacket packet;
+            if (outgoingQueue_.pop(packet))
+            {
+                if (!writeVoiceData(packet))
+                    IPCTraceLogger::getInstance().logError("Sender", "VST3", "Failed to write queued voice data");
+                continue;
+            }
+        }
+        else
+        {
+            isConnected_ = getIPCDirectory().isDirectory();
+            if (isConnected_)
+                pollForData();
+        }
+
+        juce::Thread::sleep(2);
+    }
+}
+
+inline bool IPCManagerVST3_Socket::writeVoiceData(const VoicePacket& packet)
+{
+    VoiceAssignment assignment(static_cast<int>(packet.voiceNumber));
+    assignment.notes.assign(packet.events.begin(), packet.events.begin() + packet.eventCount);
+
+    const uint64_t sequence = nextMessageSequence_.fetch_add(1);
+    const juce::File dataFile = getVoiceDataFile(packet.voiceNumber, sequence);
+    const juce::MemoryBlock data = encodeVoiceData({ assignment });
+
+    juce::TemporaryFile tempFile(dataFile);
+    if (!tempFile.getFile().replaceWithData(data.getData(), data.getSize()) ||
+        !tempFile.overwriteTargetFileWithTemporary())
+    {
+        IPCTraceLogger::getInstance().logError(
+            "Sender", "VST3", "Failed to write IPC data file: " + dataFile.getFullPathName());
+        return false;
+    }
+
+    juce::Array<juce::File> foundFiles;
+    getIPCDirectory().findChildFiles(
+        foundFiles, juce::File::findFiles, false,
+        "voice_" + juce::String(packet.voiceNumber) + "_*.dat");
+
+    if (foundFiles.size() > MAX_PENDING_FILES_PER_VOICE)
+    {
+        std::vector<juce::File> files(foundFiles.begin(), foundFiles.end());
+        std::sort(files.begin(), files.end(), [](const juce::File& left, const juce::File& right) {
+            return left.getFileName() < right.getFileName();
+        });
+
+        const int filesToRemove = static_cast<int>(files.size()) - MAX_PENDING_FILES_PER_VOICE;
+        for (int index = 0; index < filesToRemove; ++index)
+        {
+            if (!files[static_cast<size_t>(index)].deleteFile())
+                IPCTraceLogger::getInstance().logError(
+                    "Sender", "VST3", "Failed to remove expired IPC data file: " +
+                                          files[static_cast<size_t>(index)].getFullPathName());
+        }
+    }
+
+    return true;
 }
 
 inline juce::MemoryBlock IPCManagerVST3_Socket::encodeVoiceData(const std::vector<VoiceAssignment>& assignments)
@@ -347,16 +433,22 @@ inline juce::MemoryBlock IPCManagerVST3_Socket::encodeVoiceData(const std::vecto
 inline std::vector<VoiceAssignment> IPCManagerVST3_Socket::decodeVoiceData(const juce::MemoryBlock& data)
 {
     std::vector<VoiceAssignment> assignments;
-    
+
+    if (data.getSize() < sizeof(int32_t))
+        return assignments;
+
     juce::MemoryInputStream stream(data, false);
     
     // Read number of assignments
     const int count = stream.readInt();
-    if (count < 0)
+    if (count < 0 || count > 16)
         return assignments;
     
-    for (int i = 0; i < count && !stream.isExhausted(); ++i)
+    for (int i = 0; i < count; ++i)
     {
+        if (stream.getNumBytesRemaining() < static_cast<juce::int64>(2 * sizeof(int32_t)))
+            return {};
+
         VoiceAssignment assignment(0);
         
         // Read voice number
@@ -364,7 +456,9 @@ inline std::vector<VoiceAssignment> IPCManagerVST3_Socket::decodeVoiceData(const
         
         // Read number of events
         const int eventCount = stream.readInt();
-        if (eventCount < 0)
+        if (assignment.voiceNumber < 1 || assignment.voiceNumber > 16 ||
+            eventCount < 0 || eventCount > static_cast<int>(IPCMessage::MAX_EVENTS_PER_MESSAGE) ||
+            stream.getNumBytesRemaining() < static_cast<juce::int64>(eventCount) * 12)
             return {};
         
         // Read each event
@@ -382,8 +476,8 @@ inline std::vector<VoiceAssignment> IPCManagerVST3_Socket::decodeVoiceData(const
         
         assignments.push_back(assignment);
     }
-    
-    return assignments;
+
+    return stream.getNumBytesRemaining() == 0 ? assignments : std::vector<VoiceAssignment>{};
 }
 
 inline juce::File IPCManagerVST3_Socket::getIPCDirectory() const
@@ -393,9 +487,11 @@ inline juce::File IPCManagerVST3_Socket::getIPCDirectory() const
     return tempDir.getChildFile("MIDI_Splitter_IPC_" + safeSession);
 }
 
-inline juce::File IPCManagerVST3_Socket::getVoiceDataFile(int voiceNumber) const
+inline juce::File IPCManagerVST3_Socket::getVoiceDataFile(int voiceNumber, uint64_t sequence) const
 {
-    return getIPCDirectory().getChildFile("voice_" + juce::String(voiceNumber) + ".dat");
+    const auto sequenceText = juce::String(static_cast<juce::int64>(sequence)).paddedLeft('0', 20);
+    return getIPCDirectory().getChildFile(
+        "voice_" + juce::String(voiceNumber) + "_" + sequenceText + ".dat");
 }
 
 inline void IPCManagerVST3_Socket::clearSessionFiles() const
@@ -414,48 +510,53 @@ inline void IPCManagerVST3_Socket::clearSessionFiles() const
 
 inline bool IPCManagerVST3_Socket::pollForData()
 {
-    if (isSender_)
-        return false;  // Only receivers poll for data
-    
-    if (!isConnected_)
-        return false;  // Not connected, can't poll
-    
-    juce::File dataFile = getVoiceDataFile(voiceNumber_);
-    
-    DBG("pollForData: checking " << dataFile.getFullPathName());
-    
-    if (!dataFile.exists())
-    {
-        DBG("pollForData: file does not exist");
-        return false;  // No data yet
-    }
-    
-    // Read the data file
-    juce::MemoryBlock data;
-    if (!dataFile.loadFileAsData(data))
-    {
-        DBG("Failed to read data file: " << dataFile.getFullPathName());
+    if (isSender_ || !isConnected_)
         return false;
-    }
-    
-    DBG("pollForData: read " << data.getSize() << " bytes");
-    
-    // Parse the voice assignments
-    auto assignments = decodeVoiceData(data);
-    
-    DBG("pollForData: decoded " << assignments.size() << " assignments");
-    
-    // Call the receive callback for matching voice
-    for (const auto& assignment : assignments)
+
+    juce::Array<juce::File> foundFiles;
+    getIPCDirectory().findChildFiles(
+        foundFiles, juce::File::findFiles, false,
+        "voice_" + juce::String(voiceNumber_) + "_*.dat");
+
+    std::vector<juce::File> dataFiles(foundFiles.begin(), foundFiles.end());
+    std::sort(dataFiles.begin(), dataFiles.end(), [](const juce::File& left, const juce::File& right) {
+        return left.getFileName() < right.getFileName();
+    });
+
+    bool receivedData = false;
+    for (const auto& dataFile : dataFiles)
     {
-        if (assignment.voiceNumber == voiceNumber_ && receiveCallback_)
+        juce::MemoryBlock data;
+        if (!dataFile.loadFileAsData(data))
         {
-            DBG("pollForData: calling callback with " << assignment.notes.size() << " events for voice " << voiceNumber_);
-            receiveCallback_(assignment.notes, static_cast<uint8_t>(assignment.voiceNumber));
-            return true;  // Data received successfully
+            IPCTraceLogger::getInstance().logError(
+                "Receiver", "VST3", "Failed to read IPC data file: " + dataFile.getFullPathName());
+            continue;
         }
+
+        if (data.getSize() > 2 * sizeof(int32_t) +
+                             IPCMessage::MAX_EVENTS_PER_MESSAGE * 12)
+        {
+            IPCTraceLogger::getInstance().logError(
+                "Receiver", "VST3", "IPC data file exceeds the protocol size limit: " + dataFile.getFullPathName());
+            dataFile.deleteFile();
+            continue;
+        }
+
+        const auto assignments = decodeVoiceData(data);
+        for (const auto& assignment : assignments)
+        {
+            if (assignment.voiceNumber == voiceNumber_ && receiveCallback_)
+            {
+                receiveCallback_(assignment.notes, static_cast<uint8_t>(assignment.voiceNumber));
+                receivedData = true;
+            }
+        }
+
+        if (!dataFile.deleteFile())
+            IPCTraceLogger::getInstance().logError(
+                "Receiver", "VST3", "Failed to remove consumed IPC data file: " + dataFile.getFullPathName());
     }
-    
-    DBG("pollForData: no matching voice data found");
-    return false;
+
+    return receivedData;
 }
