@@ -49,12 +49,8 @@ docs/*
 !docs/PROJECT-ONBOARDING.md
 !docs/IMPLEMENTATION-STATUS.md
 
-# Local workspace instructions
-.github/instructions/*
-!.github/instructions/
-!.github/instructions/project.instructions.md
-!.github/instructions/agents.instructions.md
-!.github/instructions/master-prompt.instructions.md
+# Local agent/assistant workspace configuration
+.github/
 
 # Test projects
 daw-testing-mac/
