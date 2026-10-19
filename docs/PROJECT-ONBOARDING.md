@@ -56,7 +56,7 @@ automated tests do not validate a DAW host or AU wrapper.
 - `tests/`: CTest-registered processor and support-code tests.
 - `scripts/`: platform build, packaging, validation, and utility scripts.
 - `installer/`: macOS and Windows installer definitions.
-- `JUCE/`: vendored JUCE framework.
+- `JUCE_framework/`: JUCE framework submodule.
 - `docs/`: maintained build, onboarding, status, bug, and feature documentation.
 
 ## Manual DAW test projects

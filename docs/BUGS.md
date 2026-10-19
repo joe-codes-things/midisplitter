@@ -2,6 +2,17 @@
 
 ## Open
 
+### B007: JUCE VST3 SDK emits a shadow-field compiler warning
+
+- Status: **OPEN** (monitoring; no functional failure observed)
+- Detected: 2026-10-19
+- Impact: Adds a compiler warning to plugin build output; builds and tests still succeed.
+- Description: Clang reports `-Wshadow-field-in-constructor` for the `FReleaser` constructor parameter named `u` shadowing its member named `u` in JUCE's bundled VST3 SDK header at `JUCE_framework/modules/juce_audio_processors/format_types/VST3_SDK/pluginterfaces/base/funknown.h` (constructor around line 549; member around line 555 in the currently pinned JUCE checkout).
+- Scope: Observed when building the plugin target in both the `main` and `development` worktrees. The warning originates in JUCE dependency code, not the MIDI Splitter source. Both macOS plugin builds completed successfully, and both CTest suites passed 79/79 tests.
+- Priority: Low - non-fatal third-party dependency warning with no known functional impact.
+- Workaround: None needed; leave the pinned JUCE files unchanged.
+- Next steps: If considering a future JUCE upgrade, first verify that the candidate revision fixes this specific warning, then build and test both supported platforms before adopting it. Do not modify the vendored JUCE files just to silence the warning.
+
 ### B006: Logic Pro automation lane colors don't match plugin UI colors
 
 - Status: **OPEN** (investigating)

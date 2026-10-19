@@ -43,7 +43,7 @@ message(STATUS "Git Branch: ${GIT_BRANCH}")
 message(STATUS "Plugin Name: ${PLUGIN_PRODUCT_NAME}")
 
 # Add JUCE subdirectory (local installation)
-add_subdirectory(JUCE)
+add_subdirectory(JUCE_framework)
 
 # Audio Units remain part of the Apple build; Windows supports VST3 only.
 if(WIN32)
@@ -120,7 +120,7 @@ target_sources(MIDISplitterPlugin
         source/CCFilterCheckbox.h
 )
 
-set(VST3_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/modules/juce_audio_processors/format_types/VST3_SDK")
+set(VST3_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JUCE_framework/modules/juce_audio_processors/format_types/VST3_SDK")
 
 target_sources(MIDISplitterPlugin
     PRIVATE

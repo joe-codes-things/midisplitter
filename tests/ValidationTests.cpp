@@ -313,7 +313,7 @@ TEST_F(PluginValidationTest, BuildSystemIntegration) {
     EXPECT_TRUE(directoryExists(buildDir_)) << "Build directory should exist";
     
     // Check that JUCE is available
-    std::string juceDir = projectRoot_ + "/JUCE";
+    std::string juceDir = projectRoot_ + "/JUCE_framework";
     EXPECT_TRUE(directoryExists(juceDir)) << "JUCE directory should exist";
     
     // Check for JUCE CMakeLists.txt

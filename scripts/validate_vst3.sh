@@ -26,7 +26,7 @@ find_validator() {
     local possible_paths=(
         "/usr/local/bin/validator"
         "/opt/VST_SDK/VST3_SDK/bin/validator"
-        "./JUCE/extras/VST3_SDK/bin/validator"
+        "./JUCE_framework/extras/VST3_SDK/bin/validator"
         "$(which validator 2>/dev/null)"
     )
     
