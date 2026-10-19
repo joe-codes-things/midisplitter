@@ -37,11 +37,11 @@ passes 79/79 tests on each platform.
 
 ## Artifact locations
 
-- macOS VST3: `builds/macOS/VST3/MIDI Splitter.vst3`
-- macOS AU: `builds/macOS/AU/MIDI Splitter.component`
-- macOS PKG/DMG: `builds/macOS/Installers/` (created by the macOS packaging scripts)
-- Windows x64 VST3: `builds/Windows/VST3/MIDI Splitter.vst3`
-- Windows installer: `builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
+- macOS VST3: `exports/production-builds/macOS/VST3/MIDI Splitter.vst3`
+- macOS AU: `exports/production-builds/macOS/AU/MIDI Splitter.component`
+- macOS PKG/DMG: `exports/production-builds/macOS/Installers/` (created by the macOS packaging scripts)
+- Windows x64 VST3: `exports/production-builds/Windows/VST3/MIDI Splitter.vst3`
+- Windows installer: `exports/production-builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
 - macOS CMake state: `build/macOS/`
 - Windows CMake state and source mirror: `Coding Projects/MIDISplitterBuild` under the VM user's home
 
@@ -58,3 +58,11 @@ automated tests do not validate a DAW host or AU wrapper.
 - `installer/`: macOS and Windows installer definitions.
 - `JUCE/`: vendored JUCE framework.
 - `docs/`: maintained build, onboarding, status, bug, and feature documentation.
+
+## Manual DAW test projects
+
+Local Cubase and Logic Pro test projects live in `daw-testing-mac/` at the
+production checkout root. The entire parent directory is ignored by Git; the
+individual project names do not have their own ignore rules. In the development
+worktree, use the projects in the sibling production checkout rather than
+duplicating the large DAW project bundles.

@@ -4,7 +4,7 @@
 
 The Windows release target is an x64 VST3. This targets the architecture used by most Windows DAWs; the ARM64 Parallels VM is the native build host, not the plugin target. The build uses Visual Studio 2022 MSVC with ARM64-hosted build tools and the x64 compiler/runtime, the Windows SDK, CMake 3.22+, and Inno Setup 6. The project vendors JUCE 8.0.4 and builds VST3 on Windows; Audio Units are built only on Apple platforms.
 
-The VM workspace is isolated at `Coding Projects/MIDISplitterBuild` relative to the Windows user's home. It contains a synchronized source mirror, `build/Windows/` CMake state, and `builds/Windows/` generated plugin/installer artifacts. The ScratchPad project workspace is not used. If the project source path changes and its CMake cache becomes stale, the Windows build script removes only its marked, project-owned generated build directory before reconfiguring.
+The production VM workspace is isolated at `Coding Projects/MIDISplitterBuild` relative to the Windows user's home. It contains a synchronized source mirror, `build/Windows/` CMake state, and `exports/production-builds/Windows/` generated plugin/installer artifacts. The ScratchPad project workspace is not used. If the project source path changes and its CMake cache becomes stale, the Windows build script removes only its marked, project-owned generated build directory before reconfiguring.
 
 ## Local SSH setup
 
@@ -43,8 +43,8 @@ This checks VM SSH access and native build prerequisites before building macOS V
 
 ## Outputs and installer behavior
 
-- Plugin: `builds/Windows/VST3/MIDI Splitter.vst3`
-- Installer: `builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
-- Build manifest: `builds/Windows/BUILD_INFO.txt`
+- Plugin: `exports/production-builds/Windows/VST3/MIDI Splitter.vst3`
+- Installer: `exports/production-builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
+- Build manifest: `exports/production-builds/Windows/BUILD_INFO.txt`
 
 The installer is unsigned. When a user runs it, it installs only `MIDI Splitter.vst3` under the standard shared VST3 folder (`%CommonProgramFiles%\VST3`) and requires administrator access. Building never runs the installer, installs a plugin, or writes to system plugin directories. The project owner has since confirmed that the Windows installation works. The automated build does not run the installer or a DAW, and no DAW/version compatibility matrix is claimed.

@@ -6,8 +6,8 @@ This directory contains selected project documentation for MIDI Splitter. The pl
 
 - The current macOS and Windows test suites each pass with 79/79 tests.
 - The plugin's JUCE metadata and displayed version are generated from the CMake project version.
-- macOS build state is under `build/macOS/`; its AU and VST3 artifacts are staged under `builds/macOS/`.
-- Windows build state stays in the project-specific VM workspace; its x64 VST3 and unsigned installer are staged under `builds/Windows/`.
+- macOS build state is under `build/macOS/`; its AU and VST3 artifacts are staged under `exports/production-builds/macOS/`.
+- Windows build state stays in the project-specific VM workspace; its x64 VST3 and unsigned installer are staged under `exports/production-builds/Windows/`.
 - The project owner has confirmed that the Windows installation works. The automated build does not run the installer or a DAW, and no DAW/version compatibility matrix is claimed.
 - AU host compatibility is not established by the in-process processor tests.
 

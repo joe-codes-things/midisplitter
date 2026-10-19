@@ -27,6 +27,21 @@ MIDI Splitter is a MIDI processing plugin that intelligently distributes notes f
 - **Low latency** - Minimal processing overhead
 - **Cross-platform plugins** - VST3 on macOS and Windows; Audio Units on macOS
 
+### MIDI timing recommendation
+
+MIDI Splitter currently works best when the starts of notes intended to form a
+chord are fully quantized to the same position. Its default configuration uses
+a 7 ms processing buffer and a 1 ms timestamp tolerance for treating events as
+simultaneous; actual grouping can also depend on the DAW's audio-block size.
+An adjustable note-entry grouping window is planned for a future development
+phase.
+
+### DAW test projects
+
+The local Cubase and Logic Pro test projects are kept under
+`daw-testing-mac/` in the project root. They are ignored by Git as a group and
+are not part of the source checkout.
+
 ## Quick Start
 
 ### Installation
@@ -149,7 +164,7 @@ See [Windows build and VM setup](docs/WINDOWS_BUILD.md) for the native Windows t
 ./Scripts/build_macos.sh
 ```
 
-This configures and tests in `build/macOS/`, then stages the plugins in `builds/macOS/`. macOS builds require CMake 3.22+, Xcode command-line tools, and the included JUCE checkout. No explicit minimum macOS deployment target is set in this project; the selected Apple toolchain and JUCE defaults apply.
+This configures and tests in `build/macOS/`, then stages the plugins in `exports/production-builds/macOS/`. macOS builds require CMake 3.22+, Xcode command-line tools, and the included JUCE checkout. No explicit minimum macOS deployment target is set in this project; the selected Apple toolchain and JUCE defaults apply.
 
 ### Build Windows plugins
 
@@ -169,10 +184,10 @@ The combined script checks Windows VM readiness first, builds and tests the macO
 
 ### Build outputs
 
-- **macOS VST3:** `builds/macOS/VST3/MIDI Splitter.vst3`
-- **macOS AU:** `builds/macOS/AU/MIDI Splitter.component`
-- **Windows x64 VST3:** `builds/Windows/VST3/MIDI Splitter.vst3`
-- **Windows x64 installer:** `builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
+- **macOS VST3:** `exports/production-builds/macOS/VST3/MIDI Splitter.vst3`
+- **macOS AU:** `exports/production-builds/macOS/AU/MIDI Splitter.component`
+- **Windows x64 VST3:** `exports/production-builds/Windows/VST3/MIDI Splitter.vst3`
+- **Windows x64 installer:** `exports/production-builds/Windows/Installers/MIDISplitter_v0.0.17_Windows_x64_Setup.exe`
 - **Windows VM workspace:** `Coding Projects/MIDISplitterBuild` under the VM user's home directory
 - **Tests and generated build state:** `build/macOS/` locally and `build/Windows/` in the VM workspace
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Quick navigation to staged macOS build artifacts
-cd "$(dirname "$0")/../builds/macOS"
+cd "$(dirname "$0")/../exports/production-builds/macOS"
 pwd
 echo ""
 echo "Available builds:"

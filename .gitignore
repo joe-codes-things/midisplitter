@@ -1,6 +1,6 @@
 # Build directories
 build/
-builds/
+exports/
 cmake-build-*/
 Build/
 /.windows-vm.local
@@ -50,11 +50,14 @@ docs/*
 !docs/IMPLEMENTATION-STATUS.md
 
 # Local workspace instructions
-.github/instructions/
+.github/instructions/*
+!.github/instructions/
+!.github/instructions/project.instructions.md
+!.github/instructions/agents.instructions.md
+!.github/instructions/master-prompt.instructions.md
 
 # Test projects
-*.logicx/
-midisplitter_CubaseTest/
+daw-testing-mac/
 
 # Research materials (example plugins)
 research/

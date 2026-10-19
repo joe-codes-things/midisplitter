@@ -21,6 +21,22 @@ Creates natural ensemble feel
 Humanization and width
 
 
+Adjustable note-entry grouping window
+
+Allow users to configure how far apart incoming note starts can be and still
+be treated as one chord for voice distribution. The current default setup uses
+a 7ms processing buffer and a 1ms timestamp tolerance; the audio host's block
+size also affects actual grouping.
+
+
+MIDI humanization
+
+Add an optional humanization mode that varies note start and end times and
+reshapes incoming CC data before the plugin distributes it. The aim is to turn
+quantized, exact MIDI into a more natural performance, with controls for the
+amount of timing and CC variation.
+
+
 Per-Voice Transposition
 
 Transpose each voice independently (+/- 24 semitones)

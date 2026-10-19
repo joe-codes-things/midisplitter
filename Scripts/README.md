@@ -5,13 +5,13 @@
 ### `build_macos.sh`
 - Configures and builds macOS VST3 and AU plugins in `build/macOS/`
 - Runs the CTest suite and ad-hoc signs the local plugin bundles
-- Stages plugins in `builds/macOS/`
+- Stages production plugins in `exports/production-builds/macOS/`
 
 ### `build_windows.sh`
 - Reads SSH settings from the ignored `.windows-vm.local` or the environment
 - Checks the native Windows VM toolchain, including ARM64-hosted MSVC tools, x64 target libraries, Windows SDK, CMake, and Inno Setup
 - Builds and tests an x64 VST3 with native MSVC in the VM's project-specific workspace
-- Creates an unsigned Windows installer and retrieves it alongside the plugin into `builds/Windows/`
+- Creates an unsigned Windows installer and retrieves it alongside the plugin into `exports/production-builds/Windows/`
 - `--check-only` verifies SSH access and VM readiness without transferring source or building
 
 ### `build_all.sh`
@@ -21,13 +21,13 @@ Checks Windows VM readiness, then builds/tests macOS VST3/AU and builds/tests/pa
 Compatibility wrappers for `build_macos.sh`.
 
 ### `build_installer.sh`
-Creates an unsigned macOS `.pkg` installer under `builds/macOS/Installers/` containing:
+Creates an unsigned macOS `.pkg` installer under `exports/production-builds/macOS/Installers/` containing:
 - VST3 plugin → `/Library/Audio/Plug-Ins/VST3/`
 - AU plugin → `/Library/Audio/Plug-Ins/Components/`
 - PDF guide (if available) → `~/Documents/Nine Lives Audio/`
 
 ### `build_dmg.sh`
-Creates the macOS `.dmg` disk image under `builds/macOS/Installers/` containing:
+Creates the macOS `.dmg` disk image under `exports/production-builds/macOS/Installers/` containing:
 - The .pkg installer
 - Uninstaller.app
 - README.md

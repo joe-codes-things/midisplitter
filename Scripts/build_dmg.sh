@@ -8,7 +8,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-ARTIFACTS_DIR="$PROJECT_DIR/builds/macOS"
+ARTIFACTS_DIR="$PROJECT_DIR/exports/production-builds/macOS"
 INSTALLER_OUTPUT_DIR="$ARTIFACTS_DIR/Installers"
 INSTALLER_DIR="$PROJECT_DIR/installer"
 WORK_DIR="$PROJECT_DIR/build/macOS/dmg_work"

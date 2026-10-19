@@ -9,7 +9,7 @@ $ProjectWorkspace = Join-Path $env:USERPROFILE 'Coding Projects\MIDISplitterBuil
 $WorkspaceMarker = Join-Path $ProjectWorkspace '.midisplitter-build-workspace'
 $SourceDirectory = Join-Path $ProjectWorkspace 'source'
 $BuildDirectory = Join-Path $ProjectWorkspace 'build\Windows'
-$ArtifactsDirectory = Join-Path $ProjectWorkspace 'builds\Windows'
+$ArtifactsDirectory = Join-Path $ProjectWorkspace 'exports\production-builds\Windows'
 $StagingDirectory = Join-Path $env:USERPROFILE "midisplitter-artifacts-$RunId"
 $Succeeded = $false
 

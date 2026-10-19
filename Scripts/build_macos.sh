@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_ROOT/build/macOS"
-ARTIFACTS_DIR="$PROJECT_ROOT/builds/macOS"
+ARTIFACTS_DIR="$PROJECT_ROOT/exports/production-builds/macOS"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "Error: build_macos.sh must be run on macOS." >&2
